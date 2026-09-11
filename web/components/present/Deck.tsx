@@ -59,7 +59,7 @@ function Stage({ index }: { index: number }) {
         entering ? "scale-[0.97] opacity-0 blur-md" : "scale-100 opacity-100 blur-0"
       }`}
     >
-      <div className="flex w-full max-w-5xl items-center justify-center">
+      <div className="flex w-full max-w-6xl items-center justify-center">
         {SLIDES[shown].render()}
       </div>
     </div>
