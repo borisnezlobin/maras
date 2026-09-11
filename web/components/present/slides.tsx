@@ -135,7 +135,7 @@ export const SLIDES: Slide[] = [
   {
     id: "title",
     render: () => (
-      <div className="flex flex-col items-center gap-10 text-center">
+      <div className="flex flex-col items-center gap-12 text-center">
         <TerraceSketch />
         <div className="flex flex-col gap-4">
           <h1 className="text-7xl font-extrabold tracking-tight text-text sm:text-8xl lg:text-[10rem] lg:leading-none">

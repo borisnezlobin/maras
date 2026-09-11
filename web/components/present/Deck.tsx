@@ -38,20 +38,21 @@ function useSlideIndex(total: number) {
   return { index, go, setIndex };
 }
 
-/** Each slide fades through a blur and a slight scale, so advancing reads as a change of focus. */
+/**
+ * The blur and scale are a visual fade only. An earlier version also held the displayed slide
+ * in its own state and swapped it on a timer, which left the content one slide behind the
+ * index: the dots said three, the screen said two.
+ */
 function Stage({ index }: { index: number }) {
-  const [shown, setShown] = useState(index);
   const [entering, setEntering] = useState(false);
 
   useEffect(() => {
-    if (index === shown) return;
     setEntering(true);
-    const timer = setTimeout(() => {
-      setShown(index);
-      setEntering(false);
-    }, TRANSITION_MS / 2);
+    const timer = setTimeout(() => setEntering(false), TRANSITION_MS / 2);
     return () => clearTimeout(timer);
-  }, [index, shown]);
+  }, [index]);
+
+  const shown = index;
 
   return (
     <div
@@ -75,25 +76,25 @@ export function Deck() {
     <div className="flex min-h-screen flex-col bg-surface">
       <Stage index={index} />
 
-      <footer className="flex items-center justify-between gap-6 px-6 py-6 sm:px-12">
+      <footer className="flex shrink-0 items-center justify-between gap-6 px-8 py-8 sm:px-12">
         <button
           onClick={() => go(-1)}
           disabled={atStart}
           aria-label="Previous slide"
-          className="rounded-full p-2 text-text-muted transition-colors hover:bg-surface-raised hover:text-text disabled:opacity-30"
+          className="rounded-full bg-surface-raised p-3 text-text-muted shadow-[var(--shadow-card)] transition-colors hover:text-text disabled:opacity-25"
         >
-          <CaretLeft size={20} weight="bold" />
+          <CaretLeft size={24} weight="bold" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {SLIDES.map((slide, position) => (
             <button
               key={slide.id}
               onClick={() => setIndex(position)}
               aria-label={`Go to slide ${position + 1}`}
               aria-current={position === index}
-              className={`h-1.5 rounded-full transition-all ${
-                position === index ? "w-7 bg-accent" : "w-1.5 bg-inert-edge hover:bg-accent-edge"
+              className={`h-2.5 rounded-full transition-all ${
+                position === index ? "w-10 bg-accent" : "w-2.5 bg-inert-edge hover:bg-accent-edge"
               }`}
             />
           ))}
@@ -103,9 +104,9 @@ export function Deck() {
           onClick={() => go(1)}
           disabled={atEnd}
           aria-label="Next slide"
-          className="rounded-full p-2 text-text-muted transition-colors hover:bg-surface-raised hover:text-text disabled:opacity-30"
+          className="rounded-full bg-surface-raised p-3 text-text-muted shadow-[var(--shadow-card)] transition-colors hover:text-text disabled:opacity-25"
         >
-          <CaretRight size={20} weight="bold" />
+          <CaretRight size={24} weight="bold" />
         </button>
       </footer>
     </div>
