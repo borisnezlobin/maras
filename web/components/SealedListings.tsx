@@ -9,7 +9,7 @@ import { ConnectGate } from "@/components/ConnectGate";
 import { Badge, Button, Card } from "@/components/ui";
 import { formatEth } from "@/lib/address";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
-import { vaultInitCodeHash } from "@/lib/payload";
+import { payloadInitCodeHash } from "@/lib/payload";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -174,7 +174,7 @@ export function SealedListings() {
       address: market as Address,
       abi: marasAbi,
       functionName: "buySealed",
-      args: [id, vaultInitCodeHash(account as Address)],
+      args: [id, payloadInitCodeHash(account as Address)],
       value: price,
     });
   }

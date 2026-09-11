@@ -41,6 +41,13 @@ function vaultInitCode(owner: Address): Hex {
   return encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode, args: [owner] });
 }
 
+function proxyInitCode(owner: Address): Hex {
+  const artifact = JSON.parse(
+    readFileSync("artifacts/contracts/templates/OwnedProxy.sol/OwnedProxy.json", "utf8"),
+  );
+  return encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode, args: [owner] });
+}
+
 function commitHashFor(salt: Hex, seller: Address): Hex {
   return keccak256(
     encodeAbiParameters([{ type: "bytes32" }, { type: "address" }], [salt, seller]),
@@ -75,6 +82,31 @@ describe("ownership of the deployed payload", async function () {
     assert.equal(getAddress(owner), getAddress(buyerAddress));
     assert.notEqual(getAddress(owner), getAddress(mined.address));
     assert.notEqual(getAddress(owner), zeroAddress);
+  });
+
+  it("hands the buyer a proxy they can point at any contract, at the address they paid for", async function () {
+    const { viem, maras, seller, buyer } = await deployMarket();
+
+    const mined = mineSalt(maras.address, ONE_ZERO_BYTE);
+    await maras.write.commitSalt([commitHashFor(mined.salt, seller.account.address)]);
+    await maras.write.listNamed([mined.salt, 0n, { ...EMPTY_SPEC, minZeroBytes: 1 }]);
+    await maras.write.buyNamed([0n, proxyInitCode(buyer.account.address)], {
+      account: buyer.account,
+      value: 0n,
+    });
+
+    const proxy = await viem.getContractAt("OwnedProxy", mined.address);
+    assert.equal(getAddress(await proxy.read.proxyOwner()), getAddress(buyer.account.address));
+
+    const target = await viem.deployContract("OwnedVault", [buyer.account.address]);
+    await viem.assertions.revertWithCustomError(
+      proxy.write.pointTo([target.address, "0x"], { account: seller.account }),
+      proxy,
+      "NotOwner",
+    );
+
+    await proxy.write.pointTo([target.address, "0x"], { account: buyer.account });
+    assert.equal(getAddress(await proxy.read.proxyImplementation()), getAddress(target.address));
   });
 });
 

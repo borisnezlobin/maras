@@ -37,7 +37,7 @@ import {
   SERVER_INSTRUCTIONS,
   targetFlags,
 } from "@/lib/mcp/miner";
-import { vaultInitCode, vaultInitCodeHash } from "@/lib/payload";
+import { payloadInitCode, payloadInitCodeHash, rebuildPayload } from "@/lib/payload";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -124,8 +124,8 @@ function payloadFor(buyer: Address, boundHash: Hex, supplied: string | undefined
     return supplied as Hex;
   }
 
-  const rebuilt = vaultInitCode(buyer);
-  if (keccak256(rebuilt) !== boundHash) {
+  const rebuilt = rebuildPayload(buyer, boundHash);
+  if (rebuilt === undefined) {
     throw new Error(
       `the buyer bound a payload this server cannot rebuild (${boundHash}); pass their exact initCode`,
     );
@@ -264,7 +264,7 @@ function registerBuying(server: McpServer): void {
       if (listing.sold) return text(`Listing #${id} is already sold.`);
 
       return unsignedTransaction(
-        call("buyNamed", [BigInt(id), vaultInitCode(owner as Address)]),
+        call("buyNamed", [BigInt(id), payloadInitCode(owner as Address)]),
         listing.price,
         `Buying ${listing.predicted} for ${formatEther(listing.price)} ETH. Payment and deployment happen together, so a failed purchase costs only gas.`,
       );
@@ -284,7 +284,7 @@ function registerBuying(server: McpServer): void {
       if (!sealedIsOpen(listing)) return text(`Sealed #${id} is not available.`);
 
       return unsignedTransaction(
-        call("buySealed", [BigInt(id), vaultInitCodeHash(owner as Address)]),
+        call("buySealed", [BigInt(id), payloadInitCodeHash(owner as Address)]),
         listing.price,
         `Buying an unseen address promising ${describeSpec(listing.spec)} for ${formatEther(listing.price)} ETH, against a ${formatEther(listing.bond)} ETH bond. You will not see the address until the seller reveals it.`,
       );
@@ -327,9 +327,9 @@ function registerBuying(server: McpServer): void {
       const attempts = effortOf(spec);
 
       return unsignedTransaction(
-        call("postRequest", [spec, vaultInitCodeHash(owner as Address)]),
+        call("postRequest", [spec, payloadInitCodeHash(owner as Address)]),
         parseEther(bountyEth),
-        `A miner should need ${describeEffort(attempts)} on a GPU, ${describeCost(attempts)} of rented time, so a bounty under that will not be taken. Your payload is bound by hash (${vaultInitCodeHash(owner as Address)}).`,
+        `A miner should need ${describeEffort(attempts)} on a GPU, ${describeCost(attempts)} of rented time, so a bounty under that will not be taken. Your payload is bound by hash (${payloadInitCodeHash(owner as Address)}).`,
       );
     },
   );

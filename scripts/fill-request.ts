@@ -8,7 +8,7 @@ import {
   commitHashFor,
   marketAddress,
   specFromChain,
-  vaultInitCode,
+  rebuildPayload,
   type OnChainSpec,
 } from "../shared/market.js";
 
@@ -54,8 +54,8 @@ const { id, request } = target;
 const spec = specFromChain(request.spec);
 
 // The buyer bound their payload by hash when posting, so only this exact code can fill it.
-const initCode = vaultInitCode(request.buyer);
-if (keccak256(initCode) !== request.initCodeHash.toLowerCase()) {
+const initCode = rebuildPayload(request.buyer, request.initCodeHash);
+if (initCode === undefined) {
   console.log(`Request ${id} binds a payload this script cannot reconstruct.`);
   console.log(`  bound hash ${request.initCodeHash}`);
   process.exit(1);

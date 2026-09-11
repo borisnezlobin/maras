@@ -14,7 +14,13 @@ import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 
 import type { Spec } from "./create3.js";
-import { marasAbi, ownedVaultAbi, ownedVaultBytecode } from "./generated/abi.js";
+import {
+  marasAbi,
+  ownedProxyAbi,
+  ownedProxyBytecode,
+  ownedVaultAbi,
+  ownedVaultBytecode,
+} from "./generated/abi.js";
 
 export { marasAbi };
 
@@ -62,15 +68,26 @@ function artifact(path: string) {
 }
 
 /**
- * The owner has to arrive as a constructor argument: during construction `msg.sender` is the
+ * What a buyer gets at their address: a proxy they own and can point at any contract later. The
+ * owner has to arrive as a constructor argument, because during construction `msg.sender` is the
  * throwaway CREATE3 proxy. This is free because a CREATE3 address ignores the creation code.
  */
-export function vaultInitCode(owner: Address): Hex {
-  return encodeDeployData({
-    abi: ownedVaultAbi,
-    bytecode: ownedVaultBytecode,
-    args: [owner],
-  });
+export function payloadInitCode(owner: Address): Hex {
+  return encodeDeployData({ abi: ownedProxyAbi, bytecode: ownedProxyBytecode, args: [owner] });
+}
+
+/** What every purchase deployed before the proxy, kept so older bindings still rebuild. */
+function vaultInitCode(owner: Address): Hex {
+  return encodeDeployData({ abi: ownedVaultAbi, bytecode: ownedVaultBytecode, args: [owner] });
+}
+
+/**
+ * A seller has to reproduce the exact code a buyer bound by hash. Trying each payload this
+ * package has ever deployed means a request posted before the default changed still fills.
+ */
+export function rebuildPayload(owner: Address, boundHash: Hex): Hex | undefined {
+  const wanted = boundHash.toLowerCase();
+  return [payloadInitCode(owner), vaultInitCode(owner)].find((code) => keccak256(code) === wanted);
 }
 
 /** Binds a salt to its seller, so a copied salt cannot be registered by someone else. */
