@@ -132,7 +132,7 @@ export function Market({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "namedListingCount",
-    query: { enabled: market !== null, refetchInterval: 5_000 },
+    query: { enabled: market !== null, refetchInterval: 10_000 },
   });
 
   // Read every listing in one batch so this component holds the records and can order them.
@@ -149,7 +149,7 @@ export function Market({
 
   const { data: records } = useReadContracts({
     contracts: calls,
-    query: { enabled: calls.length > 0, refetchInterval: 5_000 },
+    query: { enabled: calls.length > 0, refetchInterval: 10_000 },
   });
 
   const listings = useMemo(() => {
