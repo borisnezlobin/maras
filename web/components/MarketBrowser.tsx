@@ -22,7 +22,7 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (next: SortK
   return (
     <div className="flex items-center gap-2 sm:ms-auto">
       <span className="text-sm text-text-muted">Sort</span>
-      <div className="flex flex-wrap items-center gap-1 rounded-full bg-surface p-1">
+      <div className="flex flex-wrap items-center gap-1 rounded-[var(--radius-card)] bg-surface p-1 sm:rounded-full">
         {SORTS.map(([key, label]) => (
           <button
             key={key}
