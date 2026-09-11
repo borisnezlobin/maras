@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/*
+ * Maras palette, taken from the salt terraces: crystal white pans, rosy salt, wet clay walls.
+ * Every colour in the app resolves through one of these semantic tokens.
+ * The design commits to a single light scheme on purpose, so there is no dark variant.
+ */
+:root {
+  color-scheme: light;
+
+  --pan-00: #fffdfb;
+  --pan-05: #fbf6f1;
+  --pan-10: #f4ece4;
+  --pan-20: #e8dbd0;
+
+  --clay-30: #cdb6a6;
+  --clay-50: #9a7c6a;
+  --clay-70: #5f4638;
+  --clay-90: #30221a;
+
+  --brine-10: #fbeaee;
+  --brine-30: #f0c3ce;
+  --brine-50: #c96b83;
+  --brine-70: #a24a61;
+
+  --surface: var(--pan-05);
+  --surface-raised: var(--pan-00);
+  --surface-sunken: var(--pan-10);
+
+  --text: var(--clay-90);
+  --text-muted: var(--clay-70);
+  --text-subtle: var(--clay-50);
+  --text-inverse: var(--pan-00);
+
+  --edge: var(--pan-20);
+  --edge-strong: var(--clay-30);
+
+  --accent: var(--brine-50);
+  --accent-strong: var(--brine-70);
+  --accent-soft: var(--brine-10);
+  --accent-edge: var(--brine-30);
+
+  --control: var(--clay-90);
+  --control-hover: var(--clay-70);
+
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+
+  --shadow-raised: 0 1px 2px rgb(48 34 26 / 0.06), 0 8px 24px -12px rgb(48 34 26 / 0.18);
+  --shadow-sunken: inset 0 1px 2px rgb(48 34 26 / 0.06);
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-edge: var(--accent-edge);
+
+  --color-control: var(--control);
+  --color-control-hover: var(--control-hover);
+
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+
+  --shadow-raised: var(--shadow-raised);
+  --shadow-sunken: var(--shadow-sunken);
+}
+
+body {
+  background-color: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background-color: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* Hex is real data, so it gets the mono face and figures that line up in a column. */
+.hex {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
