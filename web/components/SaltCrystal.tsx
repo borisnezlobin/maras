@@ -606,7 +606,10 @@ const FALL_SECONDS = 1.05;
 const REGROW_SECONDS = 2.4;
 const DISLODGE_INTERVAL = 0.16;
 const DISLODGE_RADIUS_UNITS = 1.35;
-const MAX_DISLODGED = 8;
+// Counts holes, not damage: a chip is back inside four seconds, so this only bounds how much of
+// the crystal is missing at once. Twenty of a hundred and fifty lets a sweep keep chipping for as
+// long as the cursor moves, and still leaves the silhouette intact.
+const MAX_DISLODGED = 20;
 const PUSH_SPEED = 210;
 const LIFT_SPEED = 130;
 const FILL_FRACTION = 0.82;

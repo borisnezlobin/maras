@@ -4,7 +4,6 @@ import {
   createPublicClient,
   encodeFunctionData,
   formatEther,
-  http,
   keccak256,
   parseEther,
   type Address,
@@ -16,6 +15,7 @@ import { leadingZeroBytes, hookPermissions } from "@/lib/address";
 import { describeCost, describeEffort, expandLoose, expectedAttempts, padPatterns } from "@/lib/leet";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { vaultInitCode, vaultInitCodeHash } from "@/lib/payload";
+import { baseSepoliaTransport } from "@/lib/rpc";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -24,7 +24,8 @@ const market = MARAS_ADDRESS as Address;
 
 const client = createPublicClient({
   chain: baseSepolia,
-  transport: http("https://sepolia.base.org"),
+  transport: baseSepoliaTransport(),
+  batch: { multicall: true },
 });
 
 interface OnChainSpecRecord {
@@ -98,6 +99,35 @@ async function readListing(id: bigint): Promise<NamedListing> {
   })) as unknown as NamedListing;
 }
 
+interface IdentifiedListing {
+  id: bigint;
+  listing: NamedListing;
+}
+
+/**
+ * One aggregated call rather than one per listing. Awaiting each id in turn issued sixty-odd
+ * separate requests per search, which the public endpoint answered with a rate limit.
+ */
+async function readAllListings(count: bigint): Promise<IdentifiedListing[]> {
+  const ids = Array.from({ length: Number(count) }, (_, index) => BigInt(index));
+  const results = await client.multicall({
+    contracts: ids.map((id) => ({
+      address: market,
+      abi: marasAbi,
+      functionName: "getNamedListing" as const,
+      args: [id] as const,
+    })),
+  });
+
+  const found: IdentifiedListing[] = [];
+  results.forEach((entry, index) => {
+    if (entry.status !== "success") return;
+    found.push({ id: ids[index], listing: entry.result as unknown as NamedListing });
+  });
+
+  return found;
+}
+
 function buildServer(): McpServer {
   const server = new McpServer({ name: "maras", version: "1.0.0" });
 
@@ -126,11 +156,9 @@ function buildServer(): McpServer {
         ceiling: maxPriceEth === undefined ? undefined : parseEther(maxPriceEth),
       };
 
-      const rows: string[] = [];
-      for (let id = 0n; id < count; id++) {
-        const listing = await readListing(id);
-        if (matchesFilters(listing, filters)) rows.push(describeListing(id, listing));
-      }
+      const rows = (await readAllListings(count))
+        .filter((entry) => matchesFilters(entry.listing, filters))
+        .map((entry) => describeListing(entry.id, entry.listing));
 
       return text(rows.length === 0 ? "Nothing for sale matches." : rows.join("\n"));
     },

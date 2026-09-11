@@ -8,7 +8,7 @@ transaction.
 
 **App:** [marasmarket.vercel.app](https://marasmarket.vercel.app)
 **Agents:** [marasmarket.vercel.app/api](https://marasmarket.vercel.app/api)
-**Contract:** [`0x838348307cecfe418596890a26ed7a1b598e338a`](https://sepolia.basescan.org/address/0x838348307cecfe418596890a26ed7a1b598e338a) · Base Sepolia · block 46670455
+**Contract:** [`0x7883a2913e1adee4e16860118218992f1cd36e02`](https://sepolia.basescan.org/address/0x7883a2913e1adee4e16860118218992f1cd36e02) on Base Sepolia, from block 46677670
 
 Named for the salt terraces at Maras in Peru, where pink salt is harvested from shallow pans.
 Miners here harvest salts too.
