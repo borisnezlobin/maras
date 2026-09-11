@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "@phosphor-icons/react";
+import { CaretRight, X } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { parseEther, type Address } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
@@ -111,32 +111,50 @@ function HookPicker({
   onToggle: (bit: number) => void;
   onClear: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const enabled = flags.length > 0;
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-text">Uniswap V4 hook permissions</span>
+        <button
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          className="flex items-center gap-1.5 text-sm font-semibold text-text"
+        >
+          <CaretRight
+            size={12}
+            weight="bold"
+            className={`text-text-muted transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          Uniswap V4 hook permissions
+        </button>
         <Hint text="A V4 hook declares its permissions through the low 14 bits of its own address, so the address has to be mined to match. Picking fewer does not make it easier: all fourteen bits are pinned either way." />
+        <span className="ml-auto text-xs text-text-muted">
+          {enabled ? `${flags.length} required` : "Not required"}
+        </span>
         {enabled && (
-          <button onClick={onClear} className="ml-auto text-xs text-text-muted hover:text-text">
+          <button onClick={onClear} className="text-xs text-text-muted hover:text-text">
             Clear
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {HOOK_FLAGS.map(([bit, name]) => (
-          <TogglePill
-            key={bit}
-            active={flags.includes(bit)}
-            tone="opt-in"
-            label={`Require ${name}`}
-            onClick={() => onToggle(bit)}
-          >
-            {name}
-          </TogglePill>
-        ))}
-      </div>
+
+      {open && (
+        <div className="flex flex-wrap gap-1.5">
+          {HOOK_FLAGS.map(([bit, name]) => (
+            <TogglePill
+              key={bit}
+              active={flags.includes(bit)}
+              tone="opt-in"
+              label={`Require ${name}`}
+              onClick={() => onToggle(bit)}
+            >
+              {name}
+            </TogglePill>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
