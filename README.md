@@ -128,25 +128,25 @@ here are off-the-shelf; the contribution is the composition and the two sealed f
 
 ## Sending an agent
 
-The live app has copy-paste prompts, and the MCP server exposes four tools: `search_addresses`,
-`buy_address`, `post_request`, `submit_salt`. Point an agent at it with:
+The MCP server is hosted, so connecting is a URL and nothing is installed:
 
-```json
-{
-  "mcpServers": {
-    "maras": {
-      "command": "npx",
-      "args": ["tsx", "mcp/server.ts"],
-      "cwd": "/path/to/maras",
-      "env": { "BASE_SEPOLIA_PRIVATE_KEY": "0xyour-testnet-key" }
-    }
-  }
-}
+```
+https://marasmarket.vercel.app/api/mcp
 ```
 
-The RPC endpoint is public and defaults on its own, so a key is the only thing an agent needs.
-A seller agent does not need the MCP server at all — it can mine and list in a loop with
-`MINE_ZERO_BYTES=3 npx hardhat run scripts/mine-and-list.ts --network baseSepolia`.
+It exposes `search_addresses`, `prepare_buy` and `prepare_request`, documented at
+[/api](https://marasmarket.vercel.app/api). **It never holds a key.** The two `prepare_` tools
+return an unsigned transaction — destination, value, calldata — which the caller signs with a
+wallet it controls, so no agent has to hand a private key to a server it does not own. The live
+app has copy-paste prompts for the common jobs.
+
+For an agent that would rather have the server sign for it, `mcp/server.ts` is a local stdio
+server that reads `BASE_SEPOLIA_PRIVATE_KEY` from its own environment and calls `buyNamed`,
+`postRequest` and `listNamed` directly.
+
+A seller agent needs no MCP server at all — it mines and lists in a loop with
+`MINE_ZERO_BYTES=3 npx hardhat run scripts/mine-and-list.ts --network baseSepolia`, and can
+generate its own wallet with `npx tsx scripts/new-wallet.ts` if you fund the address once.
 
 ## Running it
 
