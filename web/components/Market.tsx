@@ -32,8 +32,8 @@ function ListingCard({
   const permissions = hookPermissions(listing.predicted);
 
   return (
-    <Card className="flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-[var(--shadow-lift)]">
-      <div className="flex items-center justify-center bg-surface-sunken py-7">
+    <Card className="flex flex-col p-0 transition-shadow hover:shadow-[var(--shadow-lift)]">
+      <div className="flex items-center justify-center rounded-t-[var(--radius-card)] bg-surface-sunken py-7">
         <AddressTiles address={listing.predicted} patterns={patterns} scale={1.5} />
       </div>
 
@@ -111,8 +111,8 @@ function ListingSlot({
 
 function Skeleton() {
   return (
-    <Card className="flex flex-col overflow-hidden p-0">
-      <div className="h-[118px] animate-pulse bg-surface-sunken" />
+    <Card className="flex flex-col p-0">
+      <div className="h-[118px] animate-pulse rounded-t-[var(--radius-card)] bg-surface-sunken" />
       <div className="flex flex-col gap-2 p-4">
         <div className="h-6 w-20 animate-pulse rounded bg-surface-sunken" />
         <div className="h-3 w-full animate-pulse rounded bg-surface-sunken" />
