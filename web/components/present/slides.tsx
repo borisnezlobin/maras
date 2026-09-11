@@ -6,7 +6,7 @@ export interface Slide {
 }
 
 function Title({ children }: { children: ReactNode }) {
-  return <h2 className="text-3xl font-extrabold text-text sm:text-5xl">{children}</h2>;
+  return <h2 className="text-4xl font-extrabold text-text sm:text-6xl">{children}</h2>;
 }
 
 function Lead({ children }: { children: ReactNode }) {

@@ -30,14 +30,16 @@ function Hero() {
   }
 
   return (
-    <section className="relative flex min-h-screen flex-col justify-center overflow-hidden px-6 sm:px-12">
-      <SaltCrystal className="pointer-events-auto absolute inset-y-0 right-0 hidden w-1/2 lg:block" />
+    <section className="relative flex min-h-[92vh] flex-col justify-center overflow-hidden px-6 py-16 sm:px-12">
+      <SaltCrystal className="pointer-events-auto absolute inset-y-0 right-0 hidden w-3/5 lg:block" />
 
-      <div className="relative z-10 flex max-w-2xl flex-col gap-10 py-20">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-6xl font-extrabold tracking-tight text-text sm:text-7xl">Maras</h1>
-          <p className="text-2xl font-semibold text-accent sm:text-3xl">Your perfect address.</p>
-          <p className="max-w-lg text-lg text-text-muted">
+      <div className="relative z-10 flex max-w-2xl flex-col gap-10">
+        <div className="flex flex-col gap-5">
+          <h1 className="text-7xl font-extrabold tracking-tight text-text sm:text-8xl lg:text-9xl">
+            Maras
+          </h1>
+          <p className="text-3xl font-semibold text-accent sm:text-4xl">Your perfect address.</p>
+          <p className="max-w-lg text-lg text-text-muted sm:text-xl">
             Contract addresses someone already spent the compute to find.
           </p>
         </div>
