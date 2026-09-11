@@ -9,11 +9,17 @@ import { AddressText } from "@/components/AddressText";
 import { AddressTiles } from "@/components/AddressTiles";
 import { ConnectGate } from "@/components/ConnectGate";
 import { Badge, Button, Card, Hint } from "@/components/ui";
-import { findNibbleRun, formatEth, hookPermissions, leadingZeroBytes } from "@/lib/address";
+import {
+  findNibbleRun,
+  formatEth,
+  hasPermissions,
+  hookPermissions,
+  leadingZeroBytes,
+} from "@/lib/address";
 import { declaredWords, type NamedListingRecord } from "@/lib/listing";
 import { MARAS_ADDRESS, marasAbi, ownedVaultAbi, ownedVaultBytecode } from "@/lib/maras.generated";
 
-export type SortKey = "rarest" | "cheapest" | "newest";
+export type SortKey = "rarest" | "cheapest" | "newest" | "permissions";
 
 interface Listing {
   id: bigint;
@@ -31,6 +37,8 @@ const COMPARATORS: Record<SortKey, (a: Listing, b: Listing) => number> = {
   newest: (a, b) => Number(b.id - a.id),
   rarest: (a, b) => rarityOf(b) - rarityOf(a),
   cheapest: (a, b) => (a.price === b.price ? 0 : a.price < b.price ? -1 : 1),
+  permissions: (a, b) =>
+    hookPermissions(b.predicted).length - hookPermissions(a.predicted).length,
 };
 
 function ListingCard({ listing, busy, onBuy }: { listing: Listing; busy: boolean; onBuy: () => void }) {
@@ -109,19 +117,28 @@ function toListing(id: bigint, record: NamedListingRecord): Listing {
   };
 }
 
-function keep(listing: Listing, minZeroBytes: number, patterns: string[]): boolean {
-  if (leadingZeroBytes(listing.predicted) < minZeroBytes) return false;
-  if (patterns.length === 0) return true;
-  return findNibbleRun(listing.predicted, patterns) !== null;
+interface Filters {
+  minZeroBytes: number;
+  patterns: string[];
+  hookFlags: number[];
+}
+
+function keep(listing: Listing, filters: Filters): boolean {
+  if (leadingZeroBytes(listing.predicted) < filters.minZeroBytes) return false;
+  if (!hasPermissions(listing.predicted, filters.hookFlags)) return false;
+  if (filters.patterns.length === 0) return true;
+  return findNibbleRun(listing.predicted, filters.patterns) !== null;
 }
 
 export function Market({
   minZeroBytes,
   patterns,
+  hookFlags,
   sort = "newest",
 }: {
   minZeroBytes: number;
   patterns: string[];
+  hookFlags: number[];
   sort?: SortKey;
 }) {
   const { address: account } = useAccount();
@@ -164,9 +181,9 @@ export function Market({
     });
 
     return found
-      .filter((listing) => keep(listing, minZeroBytes, patterns))
+      .filter((listing) => keep(listing, { minZeroBytes, patterns, hookFlags }))
       .sort(COMPARATORS[sort]);
-  }, [records, minZeroBytes, patterns, sort]);
+  }, [records, minZeroBytes, patterns, hookFlags, sort]);
 
   if (market === null) {
     return (
