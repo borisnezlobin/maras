@@ -126,6 +126,28 @@ What seems absent is the combination: an escrowed market for contract-address *s
 contract verifies the claimed pattern itself and atomically deploys the buyer's code. The components
 here are off-the-shelf; the contribution is the composition and the two sealed flows.
 
+## Sending an agent
+
+The live app has copy-paste prompts, and the MCP server exposes four tools: `search_addresses`,
+`buy_address`, `post_request`, `submit_salt`. Point an agent at it with:
+
+```json
+{
+  "mcpServers": {
+    "maras": {
+      "command": "npx",
+      "args": ["tsx", "mcp/server.ts"],
+      "cwd": "/path/to/maras",
+      "env": { "BASE_SEPOLIA_PRIVATE_KEY": "0xyour-testnet-key" }
+    }
+  }
+}
+```
+
+The RPC endpoint is public and defaults on its own, so a key is the only thing an agent needs.
+A seller agent does not need the MCP server at all — it can mine and list in a loop with
+`MINE_ZERO_BYTES=3 npx hardhat run scripts/mine-and-list.ts --network baseSepolia`.
+
 ## Running it
 
 ```bash

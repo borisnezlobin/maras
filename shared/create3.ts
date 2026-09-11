@@ -60,13 +60,32 @@ export function matchesHookMask(address: Uint8Array, mask: number): boolean {
   return low === BigInt(mask)
 }
 
-/** Byte-aligned contiguous match, identical to the on-chain check. */
-export function containsPattern(address: Uint8Array, pattern: Uint8Array): boolean {
-  const lastStart = address.length - pattern.length
+export const ADDRESS_NIBBLES = 40
+
+/** Splits an address into nibbles, reusing `out` so a mining loop allocates nothing. */
+export function toNibbles(address: Uint8Array, out: Uint8Array): Uint8Array {
+  for (let index = 0; index < ADDRESS_LENGTH; index++) {
+    out[index * 2] = address[index] >> 4
+    out[index * 2 + 1] = address[index] & 0x0f
+  }
+  return out
+}
+
+export function patternToNibbles(pattern: Hex): Uint8Array {
+  const body = pattern.replace(/^0x/, '').toLowerCase()
+  return Uint8Array.from(body, (character) => parseInt(character, 16))
+}
+
+/**
+ * Nibble-aligned contiguous match, identical to the on-chain check. Nibble alignment is what
+ * lets a pattern be an odd number of hex characters and start anywhere in the address.
+ */
+export function containsNibbleRun(nibbles: Uint8Array, target: Uint8Array): boolean {
+  const lastStart = ADDRESS_NIBBLES - target.length
   for (let start = 0; start <= lastStart; start++) {
     let offset = 0
-    while (offset < pattern.length && address[start + offset] === pattern[offset]) offset++
-    if (offset === pattern.length) return true
+    while (offset < target.length && nibbles[start + offset] === target[offset]) offset++
+    if (offset === target.length) return true
   }
   return false
 }
@@ -74,12 +93,25 @@ export function containsPattern(address: Uint8Array, pattern: Uint8Array): boole
 export interface Spec {
   minZeroBytes: number
   hookMask?: number
-  pattern?: Hex
+  /** Alternatives that all satisfy the buyer; any one of them matching is enough. */
+  patterns?: Hex[]
+}
+
+/** Prepares a spec once so the mining loop only does comparisons. */
+export function compileSpec(spec: Spec) {
+  const targets = (spec.patterns ?? []).map(patternToNibbles)
+  const nibbleBuffer = new Uint8Array(ADDRESS_NIBBLES)
+
+  return function matches(address: Uint8Array): boolean {
+    if (leadingZeroBytes(address) < spec.minZeroBytes) return false
+    if (spec.hookMask !== undefined && !matchesHookMask(address, spec.hookMask)) return false
+    if (targets.length === 0) return true
+
+    toNibbles(address, nibbleBuffer)
+    return targets.some((target) => containsNibbleRun(nibbleBuffer, target))
+  }
 }
 
 export function satisfiesSpec(address: Uint8Array, spec: Spec): boolean {
-  if (leadingZeroBytes(address) < spec.minZeroBytes) return false
-  if (spec.hookMask !== undefined && !matchesHookMask(address, spec.hookMask)) return false
-  if (spec.pattern !== undefined && !containsPattern(address, hexToBytes(spec.pattern))) return false
-  return true
+  return compileSpec(spec)(address)
 }

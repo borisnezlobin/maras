@@ -5,10 +5,13 @@ import { network } from "hardhat";
 import { bytesToHex, getAddress, hexToBytes, toHex } from "viem";
 
 import {
-  containsPattern,
+  ADDRESS_NIBBLES,
+  containsNibbleRun,
   createDeriver,
   leadingZeroBytes,
   matchesHookMask,
+  patternToNibbles,
+  toNibbles,
 } from "../shared/create3.js";
 
 function saltAt(index: number) {
@@ -52,9 +55,24 @@ describe("spec predicates", function () {
     assert.equal(matchesHookMask(address, 0x2401), false);
   });
 
-  it("matches byte-aligned patterns anywhere in the address", function () {
-    const address = hexToBytes("0x00deadbeef00000000000000000000000000cafe");
-    assert.equal(containsPattern(address, hexToBytes("0xdeadbeef")), true);
-    assert.equal(containsPattern(address, hexToBytes("0xfeedface")), false);
+  it("matches patterns anywhere in the address, including odd lengths", function () {
+    const nibbles = toNibbles(
+      hexToBytes("0x00deadbeef00000000000000000000000000cafe"),
+      new Uint8Array(ADDRESS_NIBBLES),
+    );
+
+    assert.equal(containsNibbleRun(nibbles, patternToNibbles("0xdeadbeef")), true);
+    assert.equal(containsNibbleRun(nibbles, patternToNibbles("0xcafe")), true);
+    assert.equal(containsNibbleRun(nibbles, patternToNibbles("0xfeedface")), false);
+  });
+
+  it("finds a run that starts on an odd nibble", function () {
+    const nibbles = toNibbles(
+      hexToBytes("0x0abcde0000000000000000000000000000000000"),
+      new Uint8Array(ADDRESS_NIBBLES),
+    );
+
+    // "abcde" begins at nibble 1, which a byte-aligned search would miss entirely.
+    assert.equal(containsNibbleRun(nibbles, patternToNibbles("0xabcde")), true);
   });
 });

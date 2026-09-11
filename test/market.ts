@@ -19,12 +19,15 @@ import type { Spec } from "../shared/create3.js";
 
 const ONE_ZERO_BYTE: Spec = { minZeroBytes: 1 };
 
+const NO_PATTERNS = Array.from({ length: 16 }, () => "0x00000000" as Hex);
+
 const EMPTY_SPEC = {
   minZeroBytes: 0,
   hookMask: 0,
   checkHookMask: false,
-  pattern: "0x00000000" as Hex,
-  checkPattern: false,
+  patterns: NO_PATTERNS,
+  patternCount: 0,
+  patternNibbles: 0,
 };
 
 function vaultArtifact() {
