@@ -9,8 +9,8 @@ pans. The palette comes from the place.
 
 **Live app:** [marasmarket.vercel.app](https://marasmarket.vercel.app)
 
-**Contract:** [`0x770b9bc702490fa26f7a9d25754227b9a77fc23a`](https://sepolia.basescan.org/address/0x770b9bc702490fa26f7a9d25754227b9a77fc23a)
-on Base Sepolia (chainId 84532), deployed at block 46669383.
+**Contract:** [`0x838348307cecfe418596890a26ed7a1b598e338a`](https://sepolia.basescan.org/address/0x838348307cecfe418596890a26ed7a1b598e338a)
+on Base Sepolia (chainId 84532), deployed at block 46670455.
 
 ## The vertical
 
