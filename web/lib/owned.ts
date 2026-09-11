@@ -16,6 +16,9 @@ import {
   ownedVaultAbi,
 } from "@/lib/maras.generated";
 
+/** Query key for the connected wallet's addresses, refreshed after anything that changes them. */
+export const OWNED_KEY = "owned-addresses";
+
 export type AddressSource = "request" | "named" | "sealed";
 
 /** A proxy can be pointed at any contract; a vault is what purchases deployed before that. */

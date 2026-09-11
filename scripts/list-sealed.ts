@@ -6,7 +6,7 @@ import { parseEther, parseEventLogs, type Address, type Hex } from "viem";
 import { measureRate, mineSalt } from "../miner/mine.js";
 import type { Spec } from "../shared/create3.js";
 import { marasAbi } from "../shared/generated/abi.js";
-import { describeEffort, expandLoose, expectedAttempts } from "../shared/leet.js";
+import { describeEffort, expandLoose, expectedAttempts, listingPriceEth } from "../shared/leet.js";
 import { commitHashFor, marketAddress, onChainSpec } from "../shared/market.js";
 
 /**
@@ -54,7 +54,6 @@ function requestedSpec(): Spec {
 }
 
 const spec = requestedSpec();
-const priceEth = process.env.SEALED_PRICE_ETH ?? "0.002";
 const bondEth = process.env.SEALED_BOND_ETH ?? "0.002";
 
 const { viem } = await network.create({ network: "baseSepolia", chainType: "op" });
@@ -70,6 +69,9 @@ const attempts = expectedAttempts({
   patternNibbles: spec.patterns?.[0]?.replace(/^0x/, "").length ?? 0,
   variantCount: spec.patterns?.length ?? 0,
 });
+
+// Priced from what the spec promises, which is all a buyer can count on before paying.
+const priceEth = process.env.SEALED_PRICE_ETH ?? listingPriceEth(Math.log2(attempts));
 const rate = measureRate(market);
 
 console.log(`Market   ${market}`);

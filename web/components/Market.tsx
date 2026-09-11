@@ -1,9 +1,11 @@
 "use client";
 
-import { CircleNotch, Cube } from "@phosphor-icons/react";
-import { useMemo } from "react";
+import { CheckCircle, CircleNotch, Cube } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import type { Address } from "viem";
-import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 
 import { AddressText } from "@/components/AddressText";
 import { AddressTiles } from "@/components/AddressTiles";
@@ -18,7 +20,9 @@ import {
 } from "@/lib/address";
 import { declaredWords, displayWord, type NamedListingRecord } from "@/lib/listing";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
+import { OWNED_KEY } from "@/lib/owned";
 import { payloadInitCode } from "@/lib/payload";
+import { transactionLabel, useTransaction } from "@/lib/useTransaction";
 
 export type SortKey = "rarest" | "cheapest" | "newest" | "permissions";
 
@@ -27,6 +31,7 @@ interface Listing {
   price: bigint;
   predicted: Address;
   words: string[];
+  sold: boolean;
 }
 
 /** Leading zero bytes dominate, then a declared word, so rarity orders the way a buyer values it. */
@@ -42,7 +47,58 @@ const COMPARATORS: Record<SortKey, (a: Listing, b: Listing) => number> = {
     hookPermissions(b.predicted).length - hookPermissions(a.predicted).length,
 };
 
-function ListingCard({ listing, busy, onBuy }: { listing: Listing; busy: boolean; onBuy: () => void }) {
+function Bought() {
+  return (
+    <div className="mt-auto flex flex-col gap-1.5">
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+        <CheckCircle size={16} weight="fill" aria-hidden="true" />
+        It&rsquo;s yours
+      </span>
+      <Link
+        href="/addresses"
+        className="self-start rounded-[var(--radius-control)] text-sm font-semibold text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        Point it in My addresses
+      </Link>
+    </div>
+  );
+}
+
+function BuyButton({ listing, onBought }: { listing: Listing; onBought: (id: bigint) => void }) {
+  const { address: account } = useAccount();
+  const { writeContract, state } = useTransaction(() => onBought(listing.id));
+  const busy = state.signing || state.confirming;
+
+  if (state.confirmed || listing.sold) return <Bought />;
+
+  function buy() {
+    writeContract({
+      address: MARAS_ADDRESS as Address,
+      abi: marasAbi,
+      functionName: "buyNamed",
+      args: [listing.id, payloadInitCode(account as Address)],
+      value: listing.price,
+    });
+  }
+
+  return (
+    <div className="mt-auto flex flex-col gap-2">
+      <ConnectGate className="w-full">
+        <Button className="w-full" onClick={buy} disabled={busy}>
+          {busy ? (
+            <CircleNotch size={16} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <Cube size={16} aria-hidden="true" />
+          )}
+          {transactionLabel(state, "Buy and deploy", "Buying…")}
+        </Button>
+      </ConnectGate>
+      {state.message !== null && <p className="text-sm text-accent-strong">{state.message}</p>}
+    </div>
+  );
+}
+
+function ListingCard({ listing, onBought }: { listing: Listing; onBought: (id: bigint) => void }) {
   const zeros = leadingZeroBytes(listing.predicted);
   const permissions = hookPermissions(listing.predicted);
 
@@ -77,12 +133,7 @@ function ListingCard({ listing, busy, onBuy }: { listing: Listing; busy: boolean
           />
         </div>
 
-        <ConnectGate className="mt-auto w-full">
-          <Button className="mt-auto w-full" onClick={onBuy} disabled={busy}>
-            {busy ? <CircleNotch size={16} className="animate-spin" /> : <Cube size={16} />}
-            Buy and deploy
-          </Button>
-        </ConnectGate>
+        <BuyButton listing={listing} onBought={onBought} />
       </div>
     </Card>
   );
@@ -117,6 +168,7 @@ function toListing(id: bigint, record: NamedListingRecord): Listing {
     price: record.price,
     predicted: record.predicted,
     words: declaredWords(record.spec),
+    sold: record.sold,
   };
 }
 
@@ -144,9 +196,16 @@ export function Market({
   hookFlags: number[];
   sort?: SortKey;
 }) {
-  const { address: account } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
   const market = MARAS_ADDRESS;
+  const queryClient = useQueryClient();
+  // A listing bought from this page stays on it, showing where it went, instead of vanishing on
+  // the next poll the moment it is marked sold.
+  const [boughtHere, setBoughtHere] = useState<ReadonlySet<string>>(new Set());
+
+  function markBought(id: bigint) {
+    setBoughtHere((current) => new Set(current).add(id.toString()));
+    void queryClient.invalidateQueries({ queryKey: [OWNED_KEY] });
+  }
 
   const { data: count, isPending: isLoadingCount } = useReadContract({
     address: market ?? undefined,
@@ -179,14 +238,14 @@ export function Market({
     records.forEach((entry, index) => {
       if (entry.status !== "success") return;
       const record = entry.result as unknown as NamedListingRecord;
-      if (record.sold) return;
+      if (record.sold && !boughtHere.has(index.toString())) return;
       found.push(toListing(BigInt(index), record));
     });
 
     return found
       .filter((listing) => keep(listing, { minZeroBytes, patterns, hookFlags }))
       .sort(COMPARATORS[sort]);
-  }, [records, minZeroBytes, patterns, hookFlags, sort]);
+  }, [records, minZeroBytes, patterns, hookFlags, sort, boughtHere]);
 
   if (market === null) {
     return (
@@ -208,18 +267,6 @@ export function Market({
 
   if (listings.length === 0) return <EmptyState />;
 
-  function buy(listing: Listing) {
-    writeContract({
-      address: market as Address,
-      abi: marasAbi,
-      functionName: "buyNamed",
-      args: [
-        listing.id,
-        payloadInitCode(account as Address),
-      ],
-      value: listing.price,
-    });
-  }
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -227,8 +274,7 @@ export function Market({
         <ListingCard
           key={listing.id.toString()}
           listing={listing}
-          busy={isPending}
-          onBuy={() => buy(listing)}
+          onBought={markBought}
         />
       ))}
     </div>
