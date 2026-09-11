@@ -9,6 +9,11 @@ import { RequestDialog } from "@/components/RequestDialog";
 import { WalletMenu } from "@/components/WalletMenu";
 import { Button } from "@/components/ui";
 
+const NAV = [
+  { href: "/market", label: "Browse" },
+  { href: "/sealed", label: "Sealed" },
+] as const;
+
 /**
  * Shared by the market and the account pages. Anything passed as children rides in the same
  * sticky bar, which is how the market keeps its filters in reach while the grid scrolls under
@@ -27,13 +32,18 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
             <Link href="/" className="text-lg font-extrabold text-text">
               Maras
             </Link>
-            <Link
-              href="/market"
-              aria-current={pathname === "/market" ? "page" : undefined}
-              className="rounded-[var(--radius-control)] text-sm font-medium text-text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-[current=page]:text-text"
-            >
-              Browse
-            </Link>
+            <nav aria-label="Market" className="flex items-center gap-5">
+              {NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  className="rounded-[var(--radius-control)] text-sm font-medium text-text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-[current=page]:text-text"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
           <div className="flex items-center gap-2">

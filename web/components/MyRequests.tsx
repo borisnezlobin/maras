@@ -10,8 +10,8 @@ import { useAccount, usePublicClient, useReadContract, useReadContracts } from "
 import { AddressText } from "@/components/AddressText";
 import { RequestDialog } from "@/components/RequestDialog";
 import { Badge, Button, Card, Hint } from "@/components/ui";
-import { formatEth, HOOK_FLAGS } from "@/lib/address";
-import { declaredWords, displayWord, type OnChainSpec } from "@/lib/listing";
+import { formatEth } from "@/lib/address";
+import { declaredWords, displayWord, permissionNames, type OnChainSpec } from "@/lib/listing";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { findDeliveries } from "@/lib/owned";
 
@@ -26,11 +26,6 @@ interface RequestRecord {
 interface OwnRequest {
   id: bigint;
   record: RequestRecord;
-}
-
-function permissionNames(spec: OnChainSpec): string[] {
-  if (!spec.checkHookMask) return [];
-  return HOOK_FLAGS.filter(([bit]) => ((spec.hookMask >> bit) & 1) === 1).map(([, name]) => name);
 }
 
 function Delivered({ address }: { address: Address | undefined }) {
