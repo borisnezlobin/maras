@@ -60,7 +60,7 @@ function Preview({ zeroBytes, spelling }: { zeroBytes: number; spelling: string 
   const trail = spelling === "" ? 0 : Math.ceil(fill / 2);
 
   return (
-    <div className="hex flex w-full items-baseline overflow-hidden rounded-[var(--radius-control)] bg-surface-sunken px-3 py-2.5 text-sm whitespace-nowrap">
+    <div className="hex flex w-full items-baseline overflow-hidden rounded-[var(--radius-control)] bg-inert px-3 py-2.5 text-sm whitespace-nowrap">
       <span className="shrink-0 text-text-subtle">0x{zeros}</span>
       <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">{"·".repeat(lead)}</span>
       {spelling !== "" && <span className="shrink-0 font-medium text-accent">{spelling}</span>}
@@ -80,7 +80,7 @@ function ZeroBytePills({ value, onChange }: { value: number; onChange: (next: nu
           className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
             choice === value
               ? "bg-accent text-text-inverse"
-              : "bg-surface-sunken text-text-muted hover:bg-edge-strong"
+              : "bg-inert text-text-muted hover:bg-inert-hover"
           }`}
         >
           {choice === 0 ? "None" : choice}
@@ -210,7 +210,7 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
 
         <div className="flex items-center justify-between gap-4 border-t border-edge pt-4">
           <div className="flex flex-col">
-            <span className="text-xs text-text-subtle">Mining time</span>
+            <span className="text-xs text-text-subtle">Mining time on a GPU</span>
             <span className="text-sm font-semibold text-text">
               {effortFor(zeroBytes, hookBits, accepted)}
               {allSpellings.length > 1 && (

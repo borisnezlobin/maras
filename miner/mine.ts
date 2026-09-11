@@ -14,6 +14,30 @@ export interface MineResult {
   seconds: number;
 }
 
+const CALIBRATION_MS = 250;
+const CALIBRATION_BATCH = 2_000;
+
+/**
+ * Measures how fast this machine actually derives addresses. A quoted rate from some other
+ * machine makes the estimate worse than no estimate at all.
+ */
+export function measureRate(deployer: Address): number {
+  const derive = createDeriver(deployer);
+  const salt = new Uint8Array(SALT_LENGTH);
+  const startedAt = Date.now();
+  let tried = 0;
+
+  while (Date.now() - startedAt < CALIBRATION_MS) {
+    for (let index = 0; index < CALIBRATION_BATCH; index++) {
+      writeCounter(salt, BigInt(tried + index));
+      derive(salt);
+    }
+    tried += CALIBRATION_BATCH;
+  }
+
+  return tried / ((Date.now() - startedAt) / 1000);
+}
+
 function randomSaltBuffer(): Uint8Array {
   const salt = new Uint8Array(SALT_LENGTH);
   crypto.getRandomValues(salt.subarray(0, COUNTER_OFFSET));

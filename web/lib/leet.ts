@@ -29,9 +29,16 @@ export type PatternTuple = readonly [
   `0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`,
 ];
 
+/**
+ * Each slot is `bytes4`, so a shorter spelling is left-padded to four bytes. That also
+ * right-aligns the value in the uint32 the contract masks against.
+ */
 export function padPatterns(spellings: readonly string[]): PatternTuple {
-  const at = (index: number): `0x${string}` =>
-    spellings[index] === undefined ? NO_PATTERN : (`0x${spellings[index]}` as `0x${string}`);
+  const at = (index: number): `0x${string}` => {
+    const spelling = spellings[index];
+    if (spelling === undefined) return NO_PATTERN;
+    return `0x${spelling.padStart(8, "0")}` as `0x${string}`;
+  };
 
   return [
     at(0), at(1), at(2), at(3), at(4), at(5), at(6), at(7),

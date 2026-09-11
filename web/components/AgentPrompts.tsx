@@ -14,40 +14,59 @@ interface Job {
 }
 
 function setup(market: string): string {
-  return `Clone ${REPO}, run pnpm install, and set a funded Base Sepolia key with npx hardhat keystore set BASE_SEPOLIA_PRIVATE_KEY. The marketplace is at ${market} on Base Sepolia.`;
+  return `Clone ${REPO} and run pnpm install. Maras is a marketplace for mined contract addresses at ${market} on Base Sepolia.`;
 }
 
-function earnJobs(market: string): Job[] {
+function jobs(market: string): Job[] {
   const base = setup(market);
-  return [
-    {
-      label: "Mine addresses with leading zero bytes",
-      body: `${base}\n\nMine addresses with leading zero bytes and list them:\n\n  MINE_ZERO_BYTES=3 MINE_PRICE_ETH=0.002 npx hardhat run scripts/mine-and-list.ts --network baseSepolia\n\nEach run prints the expected attempts first. Raise MINE_ZERO_BYTES while runs stay quick and back off when one drags; every extra byte is 256 times the work. Report each address you list with its Basescan link.`,
-    },
-    {
-      label: "Mine a Uniswap V4 hook address",
-      body: `${base}\n\nUniswap V4 encodes a hook's permission set in the low 14 bits of the hook contract's own address, so deploying a hook with a given permission set requires mining a salt whose address carries exactly those bits.\n\n  MINE_HOOK_MASK=9216 MINE_ZERO_BYTES=1 npx hardhat run scripts/mine-and-list.ts --network baseSepolia\n\n9216 is 0x2400, meaning beforeInitialize plus afterAddLiquidity. Change the mask for other permissions. The 14 bits alone are only about 16k attempts, so add zero bytes or a word to make the result worth buying.`,
-    },
-    {
-      label: "Mine a word like cafe or deadbeef",
-      body: `${base}\n\n  MINE_PATTERN=cafe MINE_LOOSE=1 npx hardhat run scripts/mine-and-list.ts --network baseSepolia\n\nMINE_LOOSE=1 also accepts lookalike spellings, so cafe matches caf3, c4fe and c4f3 and the grind gets about four times shorter. Patterns are one to eight hex characters and can start anywhere in the address. Report what each one cost in attempts.`,
-    },
-    {
-      label: "Fill an open request for its bounty",
-      body: `${base}\n\n  npx hardhat run scripts/fill-request.ts --network baseSepolia\n\nIt takes the first unfilled request, reads its spec off chain, prints the expected mining time, then mines, commits, waits a block and fills it to collect the bounty. Set REQUEST_ID=n to target a specific one.\n\nThe buyer's payload is bound by hash, so you deploy their contract rather than your own. If the script cannot reconstruct the payload, skip that request.`,
-    },
-  ];
-}
 
-function buyJobs(market: string): Job[] {
   return [
     {
-      label: "Buy me the best address on the market",
-      body: `Use the Maras MCP server on Base Sepolia (${market}).\n\n1. Call search_addresses with minZeroBytes 2 to see what is for sale.\n2. Pick the best value. More leading zero bytes is rarer and saves gas on every future call, so weigh that against price.\n3. Call buy_address with that listing id and owner set to my wallet address.\n\nPayment and deployment happen in one transaction, so a failed purchase costs only gas. Tell me what you bought, what it cost, and the Basescan link.`,
+      label: "Mine addresses and sell them",
+      body: `${base}
+
+Put my compute to work mining addresses and listing them for sale.
+
+First ask me what to go after, and explain the trade-off so I can choose:
+- leading zero bytes, which cut calldata gas on every future call
+- a word spelled in hex, like cafe or deadbeef, optionally accepting lookalike spellings
+- Uniswap V4 hook permission bits, which a hook contract needs in its own address
+
+Then run, adjusting the settings to whatever I picked:
+
+  MINE_ZERO_BYTES=3 MINE_PATTERN=cafe MINE_LOOSE=1 MINE_HOOK_MASK=9216 MINE_PRICE_ETH=0.002 npx hardhat run scripts/mine-and-list.ts --network baseSepolia
+
+Every setting is optional. Each run prints the expected attempts before it starts, so raise the difficulty while runs stay quick and back off when one drags. Keep going and report each address you list with its Basescan link.
+
+You need a funded Base Sepolia key. Either set mine with npx hardhat keystore set BASE_SEPOLIA_PRIVATE_KEY, or run npx tsx scripts/new-wallet.ts to make your own and ask me to fund it.`,
     },
     {
-      label: "Post a bounty for an address nobody has mined",
-      body: `Use the Maras MCP server on Base Sepolia (${market}).\n\nCall post_request with minZeroBytes 3, pattern cafe, loose true, owner set to my wallet address, and bountyEth 0.01.\n\nLoose matching accepts lookalike spellings, which shortens the grind and makes a miner more likely to take the job. My payload is bound by hash, so nobody can deploy their own contract at the qualifying address and collect. Tell me the bound payload hash.`,
+      label: "Fill an open request and collect the bounty",
+      body: `${base}
+
+Buyers escrow bounties for addresses nobody has mined yet. Find one and earn it:
+
+  npx hardhat run scripts/fill-request.ts --network baseSepolia
+
+It takes the first unfilled request, reads what it asks for, prints the expected mining time, then mines, commits, waits a block and fills it. Set REQUEST_ID=n to target a specific one.
+
+The buyer's contract is bound by hash when they post, so you deploy their code rather than your own and cannot substitute anything. If the script says it cannot reconstruct the payload, skip that request and try the next.`,
+    },
+    {
+      label: "Buy me an address",
+      body: `Use the Maras MCP server on Base Sepolia (${market}).
+
+Call search_addresses to see what is for sale, then pick the best value for me. More leading zero bytes is rarer and saves gas on every future call, so weigh that against the price. Buy it with buy_address, owner set to my wallet address.
+
+Payment and deployment happen in one transaction, so a failed purchase costs only gas. Tell me what you bought, what it cost, and the Basescan link.`,
+    },
+    {
+      label: "Put up a bounty for one nobody has",
+      body: `Use the Maras MCP server on Base Sepolia (${market}).
+
+Ask me what the address should look like, then call post_request with those settings, owner set to my wallet address, and a bounty you think is enough to interest a miner.
+
+Turn loose matching on if the pattern has letters with lookalikes, since accepting caf3 alongside cafe shortens the grind and makes a miner more likely to take the job. My contract is bound by hash, so nobody can deploy their own at the qualifying address and collect.`,
     },
   ];
 }
@@ -85,43 +104,32 @@ function CopyControl({ text, label }: { text: string; label: string }) {
   );
 }
 
-function JobRows({ heading, jobs }: { heading: string; jobs: Job[] }) {
-  return (
-    <div className="flex flex-col">
-      <span className="px-4 py-2 text-xs font-semibold text-text-subtle">{heading}</span>
-      {jobs.map((job) => (
-        <div
-          key={job.label}
-          className="flex items-center justify-between gap-3 border-t border-edge px-4 py-2.5"
-        >
-          <span className="text-sm text-text">{job.label}</span>
-          <CopyControl text={job.body} label={`Copy prompt: ${job.label}`} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function AgentPrompts() {
   if (MARAS_ADDRESS === null) return null;
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-bold text-text">Connect your agent</h2>
+      <h2 className="text-lg font-bold text-text">Send an agent</h2>
 
-      <Card className="flex items-center justify-between gap-3 p-4">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-text">MCP server</span>
-          <span className="hex text-xs text-text-muted">
-            search_addresses · buy_address · post_request · submit_salt
-          </span>
-        </div>
-        <CopyControl text={mcpConfig()} label="Copy MCP server config" />
+      <Card className="flex items-center justify-between gap-4 p-4">
+        <span className="text-sm text-text">
+          Install the Maras MCP so your agent can use Maras
+        </span>
+        <CopyControl text={mcpConfig()} label="Copy the MCP server config" />
       </Card>
 
       <Card className="p-0">
-        <JobRows heading="Earn" jobs={earnJobs(MARAS_ADDRESS)} />
-        <JobRows heading="Buy" jobs={buyJobs(MARAS_ADDRESS)} />
+        {jobs(MARAS_ADDRESS).map((job, index) => (
+          <div
+            key={job.label}
+            className={`flex items-center justify-between gap-4 px-4 py-3 ${
+              index === 0 ? "" : "border-t border-edge"
+            }`}
+          >
+            <span className="text-sm text-text">{job.label}</span>
+            <CopyControl text={job.body} label={`Copy prompt: ${job.label}`} />
+          </div>
+        ))}
       </Card>
     </section>
   );

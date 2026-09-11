@@ -1,7 +1,7 @@
 import { network } from "hardhat";
 import { parseEventLogs, parseEther, type Address, type Hex } from "viem";
 
-import { mineSalt } from "../miner/mine.js";
+import { measureRate, mineSalt } from "../miner/mine.js";
 import type { Spec } from "../shared/create3.js";
 import { marasAbi } from "../shared/generated/abi.js";
 import { describeEffort, expandLoose, expectedAttempts } from "../shared/leet.js";
@@ -40,7 +40,11 @@ if (spec.patterns !== undefined && spec.patterns.length > 0) {
   console.log(`Contains ${spec.patterns.map((p) => p.slice(2)).join(", ")}`);
 }
 if (spec.hookMask !== undefined) console.log(`Hook     0x${spec.hookMask.toString(16)}`);
-console.log(`Expected ~${Math.round(attempts).toLocaleString()} attempts, ${describeEffort(attempts)} on one GPU\n`);
+
+const rate = measureRate(market as Address);
+console.log(
+  `Expected ~${Math.round(attempts).toLocaleString()} attempts, ${describeEffort(attempts, rate)} at ${Math.round(rate).toLocaleString()}/s on this machine\n`,
+);
 
 const startedAt = Date.now();
 const mined = mineSalt(market as Address, spec, (attempts) => {

@@ -29,7 +29,7 @@ function FilterPill({
       className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
         active
           ? "bg-accent text-text-inverse"
-          : "bg-surface-raised text-text-muted hover:bg-surface-sunken"
+          : "bg-inert text-text-muted hover:bg-inert-hover"
       }`}
     >
       {children}
@@ -59,7 +59,7 @@ export function Marketplace() {
       </header>
 
       <div className="flex min-h-[calc(100vh-61px)] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="relative w-full sm:w-64">
             <MagnifyingGlass
               size={16}
@@ -73,15 +73,20 @@ export function Marketplace() {
             />
           </div>
 
-          {ZERO_CHOICES.map((value) => (
-            <FilterPill
-              key={value}
-              active={minZeroBytes === value}
-              onClick={() => setMinZeroBytes(value)}
-            >
-              {value === 0 ? "Any" : `${value}+ zero bytes`}
-            </FilterPill>
-          ))}
+          {/* One group picks a minimum, the other is an independent switch, so they are
+              separated rather than run together as one undifferentiated row. */}
+          <div className="flex items-center gap-1 rounded-full bg-surface-raised p-1">
+            {ZERO_CHOICES.map((value) => (
+              <FilterPill
+                key={value}
+                active={minZeroBytes === value}
+                onClick={() => setMinZeroBytes(value)}
+              >
+                {value === 0 ? "Any" : `${value}+`}
+              </FilterPill>
+            ))}
+            <span className="px-2 text-xs text-text-subtle">zero bytes</span>
+          </div>
 
           <FilterPill active={hooksOnly} onClick={() => setHooksOnly(!hooksOnly)}>
             Uniswap V4 hooks

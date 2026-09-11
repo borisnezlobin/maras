@@ -99,7 +99,7 @@ export function TogglePill({
       className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
         active
           ? "bg-accent text-text-inverse"
-          : "bg-surface-sunken text-text-subtle line-through hover:text-text-muted"
+          : "bg-inert text-text-subtle line-through hover:bg-inert-hover hover:text-text-muted"
       }`}
     >
       {children}
@@ -107,13 +107,21 @@ export function TogglePill({
   );
 }
 
+/** A hover card rather than a native tooltip, and reachable by keyboard. */
 export function Hint({ text }: { text: string }) {
   return (
-    <span
-      title={text}
-      className="inline-flex size-4 cursor-help items-center justify-center rounded-full bg-surface-sunken text-[10px] font-bold text-text-muted"
-    >
-      ?
+    <span className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        role="button"
+        aria-label={text}
+        className="inline-flex size-4 cursor-help items-center justify-center rounded-full bg-inert-raised text-[10px] font-bold text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        ?
+      </span>
+      <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 w-60 -translate-x-1/2 rounded-[var(--radius-control)] bg-control px-3 py-2 text-xs leading-relaxed font-normal text-text-inverse opacity-0 shadow-[var(--shadow-lift)] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+        {text}
+      </span>
     </span>
   );
 }
