@@ -47,12 +47,14 @@ export function expectedAttempts(zeroBytes: number, hasHookMask: boolean, hasPat
   return 2 ** bits;
 }
 
+const GPU_HASHES_PER_SECOND = 600_000_000;
+
+/** Always a duration phrase, so it reads the same wherever it is dropped into a sentence. */
 export function describeEffort(attempts: number): string {
-  const perSecond = 600_000_000;
-  const seconds = attempts / perSecond;
-  if (seconds < 1) return "found in under a second on one GPU";
-  if (seconds < 90) return `about ${Math.round(seconds)}s on one GPU`;
-  if (seconds < 5_400) return `about ${Math.round(seconds / 60)} min on one GPU`;
-  if (seconds < 172_800) return `about ${Math.round(seconds / 3_600)} hours on one GPU`;
-  return `about ${Math.round(seconds / 86_400)} days on one GPU`;
+  const seconds = attempts / GPU_HASHES_PER_SECOND;
+  if (seconds < 1) return "under a second of GPU time";
+  if (seconds < 90) return `about ${Math.round(seconds)} seconds of GPU time`;
+  if (seconds < 5_400) return `about ${Math.round(seconds / 60)} minutes of GPU time`;
+  if (seconds < 172_800) return `about ${Math.round(seconds / 3_600)} hours of GPU time`;
+  return `about ${Math.round(seconds / 86_400)} days of GPU time`;
 }
