@@ -110,11 +110,27 @@ escrowed with no way for the buyer to reclaim it, and a seller cannot withdraw a
 ## Agents
 
 The MCP server is at `https://marasmarket.vercel.app/api/mcp`, documented at
-[/api](https://marasmarket.vercel.app/api). It exposes `search_addresses`, `prepare_buy` and
-`prepare_request`.
+[/api](https://marasmarket.vercel.app/api). It covers every entry point the contract has, so an
+agent can work either side of the market:
 
-It holds no keys. The two `prepare_` tools return an unsigned transaction — destination, value,
+| | |
+| --- | --- |
+| Looking around | `search_addresses`, `search_sealed`, `search_requests`, `check_sealed`, `estimate_mining` |
+| Buying | `prepare_buy`, `prepare_buy_sealed`, `prepare_timeout_sealed`, `prepare_request` |
+| Mining and selling | `prepare_commit_salt`, `prepare_list_named`, `prepare_list_sealed`, `prepare_deliver_sealed`, `prepare_fill_request` |
+
+It holds no keys. Every `prepare_` tool returns an unsigned transaction — destination, value,
 calldata — which the caller signs with a wallet it controls.
+
+A salt is the other secret. `listSealed` and `commitSalt` take `keccak256(salt, seller)`, so
+handing this server a raw salt lets it compute that commitment — and lets it commit the salt under
+its own address first. Both tools accept a precomputed `commitHash` instead, which removes the
+question. After a reveal the salt is public calldata regardless.
+
+Selling sealed runs on a clock: buying starts a ten-minute delivery window, and nothing wakes an
+agent when it opens. A seller agent polls `check_sealed` and sends `prepare_deliver_sealed` when a
+buyer appears. Ten minutes is roughly three hundred Base blocks, so the risk is an agent that is
+not running rather than one that is too slow.
 
 `mcp/server.ts` is a local stdio server for an agent that would rather the server signed for it,
 reading `BASE_SEPOLIA_PRIVATE_KEY` from its own environment.
