@@ -12,8 +12,10 @@ for a sold address, and no salt is usable by anyone except this contract.
 contracts/Maras.sol             marketplace + CREATE3 factory
 contracts/templates/            default buyer payloads (OwnedVault)
 shared/create3.ts               off-chain derivation + spec predicates
-miner/mine.ts                   pure grinding core
-miner/agent.ts                  seller agent: commit, wait a block, reveal
+miner/mine.ts                   pure grinding core (TypeScript, slow; used by tests and scripts)
+miner/grinder/                  fast Rust grinder: targets plus rare-byproduct scoring
+miner/agent.ts                  seller agent: runs the grinder, fills a bounty, lists byproducts
+web/app/api/mcp/route.ts        hosted MCP server; web/lib/mcp/miner.ts holds its instructions
 scripts/deploy.ts               Base Sepolia deployment
 test/                           node:test TypeScript tests
 hardhat.config.ts               solc 0.8.34, baseSepolia network
@@ -24,6 +26,11 @@ hardhat.config.ts               solc 0.8.34, baseSepolia network
 `shared/create3.ts` must derive exactly the same address as `CREATE3.predictDeterministicAddress`
 in the contract. The miner relies on it, and a one-byte divergence fails silently — every mined
 address would simply be wrong. `test/derivation.ts` guards this; run it after touching either side.
+
+`miner/grinder/src/create3.rs` is a third copy of the derivation. Check it with
+`grinder --deployer <market> --derive <salt>` against `predictAddress`, then run
+`npx tsx scripts/gen-web-grinder.ts`. The MCP server's `get_miner` hands out that generated copy,
+so skipping the regeneration ships the old grinder.
 
 Both sides also mirror three spec predicates, which must stay in agreement: leading zero bytes,
 Uniswap V4 hook mask (exact equality on the low 14 bits), and byte-aligned pattern containment.

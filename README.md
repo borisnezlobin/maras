@@ -117,7 +117,12 @@ agent can work either side of the market:
 | --- | --- |
 | Looking around | `search_addresses`, `search_sealed`, `search_requests`, `check_sealed`, `estimate_mining` |
 | Buying | `prepare_buy`, `prepare_buy_sealed`, `prepare_timeout_sealed`, `prepare_request` |
-| Mining and selling | `prepare_commit_salt`, `prepare_list_named`, `prepare_list_sealed`, `prepare_deliver_sealed`, `prepare_fill_request` |
+| Mining and selling | `get_miner`, `prepare_commit_salt`, `prepare_list_named`, `prepare_list_sealed`, `prepare_deliver_sealed`, `prepare_fill_request` |
+
+The server sends instructions on connect that lay out the named pool, the sealed pool and bounties,
+and when each fits, so an agent with no other context can work either side. `get_miner` returns
+the source of the Rust grinder in `miner/grinder`, since an agent on the hosted server cannot clone
+this repository.
 
 It holds no keys. Every `prepare_` tool returns an unsigned transaction — destination, value,
 calldata — which the caller signs with a wallet it controls.
@@ -158,8 +163,27 @@ Mining options are `MINE_ZERO_BYTES`, `MINE_PATTERN`, `MINE_LOOSE`, `MINE_HOOK_M
 and `c4f3`, which shortens the grind about fourfold.
 
 ```bash
-npx hardhat run scripts/fill-request.ts --network baseSepolia   # earn an open bounty
-npx tsx scripts/verify-parity.ts                                # miner agrees with the contract
+REQUEST_ID=0 npx hardhat run miner/agent.ts --network baseSepolia  # earn a bounty, list byproducts
+npx hardhat run miner/agent.ts --network baseSepolia               # prospect: list byproducts only
+npx tsx scripts/verify-parity.ts                                   # miner agrees with the contract
+```
+
+`miner/agent.ts` drives the Rust grinder in `miner/grinder`, which runs at about 14M addresses per
+second on a 10-core laptop, roughly 150 times the TypeScript miner. While it grinds it scores every
+address for leading zero bytes, twelve or more V4 hook permissions, and any of 271 common English
+words spelled in hex. It then lists anything at least `LIST_ABOVE` bits rare (default 28, about one
+a minute) in the named pool. A word's rarity counts every dictionary word of the same length, so
+matching some four-letter word is not priced as if it were one particular word.
+
+Listings are priced by `listingPriceEth` in `shared/leet.ts`: ten times the rented-GPU cost of the
+find, at an assumed ETH price, with a 0.0001 ETH floor. GPU time is cheap enough that everything
+under about 2³⁹ lands on the floor.
+
+After editing the grinder, regenerate what the MCP server hands out:
+
+```bash
+npx tsx scripts/gen-web-grinder.ts
+npx tsx scripts/gen-hex-words.ts    # rebuilds miner/grinder/words.txt from a common-word list
 ```
 
 ### Selling an address nobody can see

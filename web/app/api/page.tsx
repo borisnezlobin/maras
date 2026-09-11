@@ -25,8 +25,13 @@ const TOOLS = [
   },
   {
     name: "search_requests",
-    does: "Bounties buyers escrowed for addresses nobody has mined yet.",
+    does: "Bounties buyers escrowed for addresses nobody has mined yet, marked open or filled.",
     args: "openOnly",
+  },
+  {
+    name: "get_miner",
+    does: "Source for a fast Rust grinder, aimed at a bounty if you name one. It also reports rare byproducts worth listing.",
+    args: "requestId, listAbove",
   },
   {
     name: "check_sealed",
@@ -65,8 +70,8 @@ const TOOLS = [
   },
   {
     name: "prepare_list_named",
-    does: "Publishes a mined address for open sale. Must follow a commit.",
-    args: "salt, priceEth, minZeroBytes, pattern, loose, hookMask",
+    does: "Publishes a mined address for open sale. Must follow a commit. Pass rarityBits from a grinder find to have it priced for you.",
+    args: "salt, priceEth or rarityBits, minZeroBytes, pattern, loose, hookMask",
   },
   {
     name: "prepare_list_sealed",

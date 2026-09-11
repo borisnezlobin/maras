@@ -93,5 +93,6 @@ export function describeSealed(id: bigint, listing: SealedListing): string {
 }
 
 export function describeRequest(id: bigint, request: RequestRecord): string {
-  return `#${id} wants ${describeSpec(request.spec)} · ${formatEther(request.bounty)} ETH bounty · posted by ${request.buyer}`;
+  const state = request.filled ? "filled" : "open";
+  return `#${id} ${state} · wants ${describeSpec(request.spec)} · ${formatEther(request.bounty)} ETH bounty · posted by ${request.buyer}`;
 }

@@ -1,0 +1,12 @@
+[package]
+name = "grinder"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hex = "0.4.3"
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+
+[profile.release]
+codegen-units = 1
+lto = true

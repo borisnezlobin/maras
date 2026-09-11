@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { hasPermissions, hookPermissions, HOOK_FLAGS, leadingZeroBytes } from "@/lib/address";
 import { commitHashFor } from "@/lib/commit";
-import { describeCost, describeEffort, expandLoose, expectedAttempts } from "@/lib/leet";
+import { describeCost, describeEffort, expandLoose, expectedAttempts, listingPriceEth } from "@/lib/leet";
 import { marasAbi } from "@/lib/maras.generated";
 import {
   buildSpec,
@@ -30,6 +30,13 @@ import {
   type NamedListing,
   type OnChainSpecRecord,
 } from "@/lib/mcp/reads";
+import {
+  DEFAULT_LIST_ABOVE,
+  grinderCommand,
+  minerGuide,
+  SERVER_INSTRUCTIONS,
+  targetFlags,
+} from "@/lib/mcp/miner";
 import { vaultInitCode, vaultInitCodeHash } from "@/lib/payload";
 
 export const dynamic = "force-dynamic";
@@ -126,6 +133,13 @@ function payloadFor(buyer: Address, boundHash: Hex, supplied: string | undefined
   return rebuilt;
 }
 
+/** A find from the grinder carries its rarity, which prices it; anything else names a price. */
+function listingPrice(priceEth: string | undefined, rarityBits: number | undefined): string {
+  if (priceEth !== undefined) return priceEth;
+  if (rarityBits === undefined) throw new Error("pass either priceEth or rarityBits");
+  return listingPriceEth(rarityBits);
+}
+
 /** Either the caller hashed the salt itself, or it trusts this server with the salt to do it. */
 function commitmentFrom(salt: string | undefined, commitHash: string | undefined, seller: string): Hex {
   if (commitHash !== undefined) return commitHash as Hex;
@@ -193,7 +207,7 @@ function registerSearches(server: McpServer): void {
     {
       title: "Search open bounties",
       description:
-        "Lists bounties buyers have escrowed for addresses nobody has mined yet. Mine one and fill it to collect.",
+        "Lists bounties buyers have escrowed for addresses nobody has mined yet, each marked open or filled. Call get_miner with a bounty's id to grind for it, then fill it to collect.",
       inputSchema: { openOnly: z.boolean().default(true) },
     },
     async ({ openOnly }) => {
@@ -343,11 +357,17 @@ function registerSelling(server: McpServer): void {
     {
       title: "List a mined address for sale",
       description:
-        "Second step after prepare_commit_salt, and it must land in a later block than the commit. The contract re-derives the address from your salt and rejects the listing if it does not match what you claim.",
-      inputSchema: { ...SPEC_FIELDS, salt: SALT, priceEth: z.string() },
+        "Second step after prepare_commit_salt, and it must land in a later block than the commit. The contract re-derives the address from your salt and rejects the listing if it does not match what you claim. Pass priceEth, or rarityBits from a grinder find to have it priced from what the grind would cost to rent.",
+      inputSchema: {
+        ...SPEC_FIELDS,
+        salt: SALT,
+        priceEth: z.string().optional(),
+        rarityBits: z.number().min(0).max(160).optional(),
+      },
     },
-    async ({ minZeroBytes, pattern, loose, hookMask, salt, priceEth }) => {
+    async ({ minZeroBytes, pattern, loose, hookMask, salt, priceEth: askedPrice, rarityBits }) => {
       const spec = buildSpec({ minZeroBytes, pattern, loose, hookMask });
+      const priceEth = listingPrice(askedPrice, rarityBits);
 
       return unsignedTransaction(
         call("listNamed", [salt as Hex, parseEther(priceEth), spec]),
@@ -452,11 +472,46 @@ function registerSelling(server: McpServer): void {
   );
 }
 
+function registerMining(server: McpServer): void {
+  server.registerTool(
+    "get_miner",
+    {
+      title: "Get the grinder",
+      description:
+        "Returns the source of a multithreaded Rust grinder that checks addresses exactly as the contract does, the command to run it, and how to act on each line it prints. Pass requestId to aim it at a bounty. It also reports rare byproducts to list in the named pool.",
+      inputSchema: {
+        requestId: z.number().int().min(0).optional(),
+        listAbove: z
+          .number()
+          .min(0)
+          .default(DEFAULT_LIST_ABOVE)
+          .describe("report byproducts at least this many bits rare; 28 is about one a minute on a laptop"),
+      },
+    },
+    async ({ requestId, listAbove }) => {
+      if (requestId === undefined) {
+        const heading = "Prospecting: the grinder runs until stopped and reports byproducts only.";
+        return text(minerGuide(grinderCommand([], listAbove), heading));
+      }
+
+      const request = await readRequest(BigInt(requestId));
+      if (request.filled) return text(`Bounty #${requestId} is already filled.`);
+
+      const heading = `Aimed at bounty #${requestId}, which wants ${describeSpec(request.spec)} for ${formatEther(request.bounty)} ETH.`;
+      return text(minerGuide(grinderCommand(targetFlags(request.spec), listAbove), heading));
+    },
+  );
+}
+
 function buildServer(): McpServer {
-  const server = new McpServer({ name: "maras", version: "1.0.0" });
+  const server = new McpServer(
+    { name: "maras", version: "1.0.0" },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
   registerSearches(server);
   registerBuying(server);
   registerSelling(server);
+  registerMining(server);
   return server;
 }
 
