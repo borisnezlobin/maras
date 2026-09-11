@@ -26,18 +26,32 @@ export function isPatternShape(pattern: string): boolean {
  * stores a fixed number of alternatives.
  */
 export function expandLoose(pattern: string, loose: boolean): Hex[] {
+  return spellingsOf(pattern, loose).map((spelling) => `0x${spelling}` as Hex);
+}
+
+/**
+ * Combinations are decoded from an index rather than built up character by character, so
+ * capping the count never truncates the word itself. Index 0 is always the exact spelling.
+ */
+export function spellingsOf(pattern: string, loose: boolean): string[] {
   const body = pattern.replace(/^0x/, "").toLowerCase();
   if (body === "") return [];
-  if (!loose) return [`0x${body}` as Hex];
+  if (!loose) return [body];
 
-  let spellings = [""];
-  for (const character of body) {
-    const options = [character, ...(LOOKALIKES[character] ?? [])];
-    spellings = spellings.flatMap((prefix) => options.map((option) => prefix + option));
-    if (spellings.length > MAX_PATTERNS) break;
-  }
+  const choices = body.split("").map((character) => [character, ...(LOOKALIKES[character] ?? [])]);
+  const total = choices.reduce((count, options) => count * options.length, 1);
+  const wanted = Math.min(total, MAX_PATTERNS);
 
-  return spellings.slice(0, MAX_PATTERNS).map((spelling) => `0x${spelling}` as Hex);
+  return Array.from({ length: wanted }, (_, index) => {
+    let remaining = index;
+    let spelling = "";
+    for (let position = choices.length - 1; position >= 0; position--) {
+      const options = choices[position];
+      spelling = options[remaining % options.length] + spelling;
+      remaining = Math.floor(remaining / options.length);
+    }
+    return spelling;
+  });
 }
 
 /**

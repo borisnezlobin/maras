@@ -47,20 +47,30 @@ export function hasLookalikes(pattern: string): boolean {
   return pattern.toLowerCase().split("").some((character) => character in LOOKALIKES);
 }
 
-/** Every lookalike spelling of `pattern`, the exact one first. */
+/**
+ * Every lookalike spelling of `pattern`, the exact one first. Combinations are decoded from an
+ * index rather than built up character by character, so capping the count never truncates the
+ * word itself.
+ */
 export function expandLoose(pattern: string, loose: boolean): string[] {
   const body = pattern.replace(/^0x/, "").toLowerCase();
   if (body === "") return [];
   if (!loose) return [body];
 
-  let spellings = [""];
-  for (const character of body) {
-    const options = [character, ...(LOOKALIKES[character] ?? [])];
-    spellings = spellings.flatMap((prefix) => options.map((option) => prefix + option));
-    if (spellings.length > MAX_PATTERNS) break;
-  }
+  const choices = body.split("").map((character) => [character, ...(LOOKALIKES[character] ?? [])]);
+  const total = choices.reduce((count, options) => count * options.length, 1);
+  const wanted = Math.min(total, MAX_PATTERNS);
 
-  return spellings.slice(0, MAX_PATTERNS);
+  return Array.from({ length: wanted }, (_, index) => {
+    let remaining = index;
+    let spelling = "";
+    for (let position = choices.length - 1; position >= 0; position--) {
+      const options = choices[position];
+      spelling = options[remaining % options.length] + spelling;
+      remaining = Math.floor(remaining / options.length);
+    }
+    return spelling;
+  });
 }
 
 export interface EffortInput {
