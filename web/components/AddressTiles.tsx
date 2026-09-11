@@ -1,6 +1,6 @@
 import { findNibbleRun, leadingZeroBytes } from "@/lib/address";
 
-type TileKind = "zero" | "pattern" | "plain";
+type TileKind = "zero" | "word" | "plain";
 
 const COLUMNS = 5;
 const ROWS = 4;
@@ -13,58 +13,33 @@ const HEIGHT = ROWS * TILE + (ROWS - 1) * GAP;
 
 const FILL: Record<TileKind, string> = {
   zero: "var(--tile-zero)",
-  pattern: "var(--tile-pattern)",
+  word: "var(--tile-pattern)",
   plain: "var(--tile-plain)",
 };
 
 interface AddressTilesProps {
   address: string;
-  patterns?: string[];
+  /** Words the seller declared and the contract verified. */
+  words?: string[];
   scale?: number;
 }
 
-/**
- * A match can start mid-byte, so every byte the run touches is lit. With nothing searched for,
- * common words are still highlighted: an address was usually mined for one, and a card that
- * cannot show why it is worth buying is not selling anything.
- */
-function byteKinds(address: string, patterns: string[]): TileKind[] {
+/** A match can start mid-byte, so every byte the run touches is lit. */
+function byteKinds(address: string, words: string[]): TileKind[] {
   const zeros = leadingZeroBytes(address);
-  const match = findNibbleRun(address, patterns);
+  const match = findNibbleRun(address, words);
   const firstByte = match === null ? -1 : Math.floor(match.start / 2);
   const lastByte = match === null ? -1 : Math.floor((match.start + match.length - 1) / 2);
 
   return Array.from({ length: 20 }, (_, index) => {
-    if (index >= firstByte && index <= lastByte && match !== null) return "pattern";
+    if (match !== null && index >= firstByte && index <= lastByte) return "word";
     if (index < zeros) return "zero";
     return "plain";
   });
 }
 
-/** Words worth pointing at when the viewer has not searched for anything specific. */
-const COMMON_WORDS = [
-  "deadbeef",
-  "deadbee",
-  "cafebabe",
-  "facade",
-  "beef",
-  "cafe",
-  "face",
-  "feed",
-  "babe",
-  "dead",
-  "b0b",
-];
-
-function highlightFor(address: string, patterns: string[]): string[] {
-  if (patterns.length > 0) return patterns;
-  const body = address.slice(2).toLowerCase();
-  const found = COMMON_WORDS.find((word) => body.includes(word));
-  return found === undefined ? [] : [found];
-}
-
-export function AddressTiles({ address, patterns = [], scale = 1 }: AddressTilesProps) {
-  const kinds = byteKinds(address, highlightFor(address, patterns));
+export function AddressTiles({ address, words = [], scale = 1 }: AddressTilesProps) {
+  const kinds = byteKinds(address, words);
 
   return (
     <svg

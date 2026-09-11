@@ -14,12 +14,29 @@ import {
   vaultInitCode,
 } from "../shared/market.js";
 
+interface OnChainSpecRecord {
+  minZeroBytes: number;
+  hookMask: number;
+  checkHookMask: boolean;
+  patterns: readonly Hex[];
+  patternCount: number;
+  patternNibbles: number;
+}
+
 interface NamedListing {
   seller: Address;
   price: bigint;
   salt: Hex;
   predicted: Address;
   sold: boolean;
+  spec: OnChainSpecRecord;
+}
+
+/** The words the seller declared, which the contract verified before accepting the listing. */
+export function declaredWords(spec: OnChainSpecRecord): string[] {
+  return spec.patterns
+    .slice(0, spec.patternCount)
+    .map((pattern) => pattern.replace(/^0x/, "").slice(-spec.patternNibbles));
 }
 
 const specShape = {

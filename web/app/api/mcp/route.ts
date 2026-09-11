@@ -27,11 +27,28 @@ const client = createPublicClient({
   transport: http("https://sepolia.base.org"),
 });
 
+interface OnChainSpecRecord {
+  minZeroBytes: number;
+  hookMask: number;
+  checkHookMask: boolean;
+  patterns: readonly string[];
+  patternCount: number;
+  patternNibbles: number;
+}
+
 interface NamedListing {
   seller: Address;
   price: bigint;
   predicted: Address;
   sold: boolean;
+  spec: OnChainSpecRecord;
+}
+
+/** The words the seller declared, which the contract verified before accepting the listing. */
+function declaredWords(spec: OnChainSpecRecord): string[] {
+  return spec.patterns
+    .slice(0, spec.patternCount)
+    .map((pattern) => pattern.replace(/^0x/, "").slice(-spec.patternNibbles));
 }
 
 function text(body: string) {
@@ -47,6 +64,29 @@ function unsignedTransaction(data: string, value: bigint, note: string) {
     `${note}\n\nSend this transaction from your own wallet on Base Sepolia (chain 84532):\n\n` +
       `  to     ${market}\n  value  ${value} wei (${formatEther(value)} ETH)\n  data   ${data}`,
   );
+}
+
+interface ListingFilters {
+  minZeroBytes: number;
+  needle?: string;
+  ceiling?: bigint;
+}
+
+function matchesFilters(listing: NamedListing, filters: ListingFilters): boolean {
+  if (listing.sold) return false;
+  if (leadingZeroBytes(listing.predicted) < filters.minZeroBytes) return false;
+  if (filters.ceiling !== undefined && listing.price > filters.ceiling) return false;
+  if (filters.needle === undefined) return true;
+  return listing.predicted.slice(2).toLowerCase().includes(filters.needle);
+}
+
+function describeListing(id: bigint, listing: NamedListing): string {
+  const zeros = leadingZeroBytes(listing.predicted);
+  const permissions = hookPermissions(listing.predicted).length;
+  const words = declaredWords(listing.spec);
+  const minedFor = words.length === 0 ? "" : ` · contains ${words[0]}`;
+
+  return `#${id} ${listing.predicted} · ${zeros} zero bytes${minedFor} · ${permissions} V4 permissions · ${formatEther(listing.price)} ETH`;
 }
 
 async function readListing(id: bigint): Promise<NamedListing> {
@@ -80,23 +120,16 @@ function buildServer(): McpServer {
         functionName: "namedListingCount",
       })) as bigint;
 
-      const ceiling = maxPriceEth === undefined ? undefined : parseEther(maxPriceEth);
-      const needle = contains?.toLowerCase();
-      const rows: string[] = [];
+      const filters = {
+        minZeroBytes,
+        needle: contains?.toLowerCase(),
+        ceiling: maxPriceEth === undefined ? undefined : parseEther(maxPriceEth),
+      };
 
+      const rows: string[] = [];
       for (let id = 0n; id < count; id++) {
         const listing = await readListing(id);
-        if (listing.sold) continue;
-
-        const zeros = leadingZeroBytes(listing.predicted);
-        if (zeros < minZeroBytes) continue;
-        if (needle !== undefined && !listing.predicted.slice(2).toLowerCase().includes(needle)) continue;
-        if (ceiling !== undefined && listing.price > ceiling) continue;
-
-        const permissions = hookPermissions(listing.predicted).length;
-        rows.push(
-          `#${id} ${listing.predicted} · ${zeros} zero bytes · ${permissions} V4 permissions · ${formatEther(listing.price)} ETH`,
-        );
+        if (matchesFilters(listing, filters)) rows.push(describeListing(id, listing));
       }
 
       return text(rows.length === 0 ? "Nothing for sale matches." : rows.join("\n"));
