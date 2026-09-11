@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import { network } from "hardhat";
-import { keccak256, parseEther, parseEventLogs, type Address, type Hex } from "viem";
+import { parseEther, parseEventLogs, type Address, type Hex } from "viem";
 
 import type { Spec } from "../shared/create3.js";
 import { marasAbi } from "../shared/generated/abi.js";

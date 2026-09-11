@@ -6,10 +6,11 @@ import { z } from "zod";
 import { hasPermissions, hookPermissions, HOOK_FLAGS, leadingZeroBytes } from "@/lib/address";
 import { commitHashFor } from "@/lib/commit";
 import { describeCost, describeEffort, expandLoose, expectedAttempts, listingPriceEth } from "@/lib/leet";
-import { marasAbi } from "@/lib/maras.generated";
+import { marasAbi, ownedProxyAbi } from "@/lib/maras.generated";
 import {
   buildSpec,
   describeNamed,
+  describeOwned,
   describeRequest,
   describeSealed,
   describeSpec,
@@ -20,6 +21,7 @@ import {
   type BuiltSpec,
 } from "@/lib/mcp/format";
 import {
+  client,
   readAllNamed,
   readAllRequests,
   readAllSealed,
@@ -37,6 +39,7 @@ import {
   SERVER_INSTRUCTIONS,
   targetFlags,
 } from "@/lib/mcp/miner";
+import { findOwnedAddresses } from "@/lib/owned";
 import { payloadInitCode, payloadInitCodeHash, rebuildPayload } from "@/lib/payload";
 
 export const dynamic = "force-dynamic";
@@ -256,7 +259,7 @@ function registerBuying(server: McpServer): void {
     {
       title: "Prepare a purchase",
       description:
-        "Builds the transaction that buys a listed address and deploys a vault you own at it. Sign and send it yourself; this server holds no keys.",
+        "Builds the transaction that buys a listed address and deploys a proxy you own at it, which you can later point at any contract with prepare_point_address. Sign and send it yourself; this server holds no keys.",
       inputSchema: { id: z.number().int().min(0), owner: ADDRESS },
     },
     async ({ id, owner }) => {
@@ -503,6 +506,72 @@ function registerMining(server: McpServer): void {
   );
 }
 
+const CALLDATA = z.string().regex(/^0x([0-9a-fA-F]{2})*$/);
+const NO_VALUE = BigInt(0);
+
+/**
+ * What a buyer does after buying. An address comes with a proxy its owner points at any
+ * contract, so these build calls to that address rather than to the market.
+ */
+function registerOwning(server: McpServer): void {
+  server.registerTool(
+    "my_addresses",
+    {
+      title: "List the addresses a wallet owns",
+      description:
+        "Every address bought, requested or delivered sealed through Maras whose contract names `owner` as its controller, with what each one points at now.",
+      inputSchema: { owner: ADDRESS },
+    },
+    async ({ owner }) => {
+      const owned = await findOwnedAddresses(client, owner as Address);
+      if (owned.length === 0) return text("That wallet does not own a Maras address.");
+      return text(owned.map(describeOwned).join("\n"));
+    },
+  );
+
+  server.registerTool(
+    "prepare_point_address",
+    {
+      title: "Point an owned address at a contract",
+      description:
+        "Builds the transaction that makes an address you own forward every call to `implementation`, the way a domain is pointed at a server. `setup` is optional calldata run once against the implementation in the address's own storage, standing in for a constructor. Only the owner can send it, and only proxies can be pointed; my_addresses says which yours are.",
+      inputSchema: { address: ADDRESS, implementation: ADDRESS, setup: CALLDATA.optional() },
+    },
+    async ({ address, implementation, setup }) =>
+      unsignedTransaction(
+        encodeFunctionData({
+          abi: ownedProxyAbi,
+          functionName: "pointTo",
+          args: [implementation as Address, (setup ?? "0x") as Hex],
+        }),
+        NO_VALUE,
+        `Pointing ${address} at ${implementation}. It keeps its address and its storage; only the code behind it changes.`,
+        address as Address,
+      ),
+  );
+
+  server.registerTool(
+    "prepare_transfer_address",
+    {
+      title: "Transfer an owned address",
+      description:
+        "Builds the transaction that hands control of an address you own to `newOwner`. After it lands, only they can point or transfer it. This cannot be undone.",
+      inputSchema: { address: ADDRESS, newOwner: ADDRESS },
+    },
+    async ({ address, newOwner }) =>
+      unsignedTransaction(
+        encodeFunctionData({
+          abi: ownedProxyAbi,
+          functionName: "transferProxyOwnership",
+          args: [newOwner as Address],
+        }),
+        NO_VALUE,
+        `Transferring ${address} to ${newOwner}. You will no longer control it.`,
+        address as Address,
+      ),
+  );
+}
+
 function buildServer(): McpServer {
   const server = new McpServer(
     { name: "maras", version: "1.0.0" },
@@ -510,6 +579,7 @@ function buildServer(): McpServer {
   );
   registerSearches(server);
   registerBuying(server);
+  registerOwning(server);
   registerSelling(server);
   registerMining(server);
   return server;

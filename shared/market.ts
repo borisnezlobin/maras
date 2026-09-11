@@ -14,13 +14,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 
 import type { Spec } from "./create3.js";
-import {
-  marasAbi,
-  ownedProxyAbi,
-  ownedProxyBytecode,
-  ownedVaultAbi,
-  ownedVaultBytecode,
-} from "./generated/abi.js";
+import { marasAbi, ownedProxyAbi, ownedProxyBytecode } from "./generated/abi.js";
 
 export { marasAbi };
 
@@ -76,18 +70,15 @@ export function payloadInitCode(owner: Address): Hex {
   return encodeDeployData({ abi: ownedProxyAbi, bytecode: ownedProxyBytecode, args: [owner] });
 }
 
-/** What every purchase deployed before the proxy, kept so older bindings still rebuild. */
-function vaultInitCode(owner: Address): Hex {
-  return encodeDeployData({ abi: ownedVaultAbi, bytecode: ownedVaultBytecode, args: [owner] });
-}
-
 /**
- * A seller has to reproduce the exact code a buyer bound by hash. Trying each payload this
- * package has ever deployed means a request posted before the default changed still fills.
+ * A seller has to reproduce the exact code a buyer bound by hash. Anything other than the default
+ * payload, such as a vault bound before the proxy existed, has to be delivered with the buyer's
+ * exact code supplied by hand: its bytecode carries a compiler metadata hash that a later compile
+ * does not reproduce.
  */
 export function rebuildPayload(owner: Address, boundHash: Hex): Hex | undefined {
-  const wanted = boundHash.toLowerCase();
-  return [payloadInitCode(owner), vaultInitCode(owner)].find((code) => keccak256(code) === wanted);
+  const code = payloadInitCode(owner);
+  return keccak256(code) === boundHash.toLowerCase() ? code : undefined;
 }
 
 /** Binds a salt to its seller, so a copied salt cannot be registered by someone else. */

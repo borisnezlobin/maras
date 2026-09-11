@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { network } from "hardhat";
-import { formatEther, getAddress, keccak256, type Address, type Hex } from "viem";
+import { formatEther, getAddress, type Address, type Hex } from "viem";
 
 import { marketAddress, rebuildPayload } from "../shared/market.js";
 

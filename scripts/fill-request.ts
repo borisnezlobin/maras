@@ -1,5 +1,5 @@
 import { network } from "hardhat";
-import { formatEther, keccak256, parseEventLogs, type Address, type Hex } from "viem";
+import { formatEther, parseEventLogs, type Address, type Hex } from "viem";
 
 import { mineSalt } from "../miner/mine.js";
 import { marasAbi } from "../shared/generated/abi.js";
