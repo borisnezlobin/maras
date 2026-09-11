@@ -211,7 +211,7 @@ export function SealedListings() {
   const { writeContract, isPending } = useWriteContract();
   const market = MARAS_ADDRESS;
 
-  const { data: count } = useReadContract({
+  const { data: count, isPending } = useReadContract({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "sealedListingCount",
@@ -254,7 +254,11 @@ export function SealedListings() {
         misses the delivery window you take back your money along with their bond.
       </p>
 
-      {ids.length === 0 ? (
+      {isPending ? (
+        <Card>
+          <p className="text-sm text-text-muted">Checking the chain…</p>
+        </Card>
+      ) : ids.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="flex flex-col gap-3">
