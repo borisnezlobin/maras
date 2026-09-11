@@ -53,7 +53,14 @@ function ConnectButton() {
       disabled={isPending || injected === undefined}
     >
       <Wallet size={16} aria-hidden="true" />
-      {isPending ? "Opening your wallet…" : "Connect wallet"}
+      {isPending ? (
+        "Opening your wallet…"
+      ) : (
+        <>
+          <span className="sm:hidden">Connect</span>
+          <span className="hidden sm:inline">Connect wallet</span>
+        </>
+      )}
     </Button>
   );
 }
