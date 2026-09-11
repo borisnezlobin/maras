@@ -48,12 +48,15 @@ function Preview({ draft, variants }: { draft: Draft; variants: string[] }) {
 
   return (
     <div className="flex flex-col gap-1.5 rounded-[var(--radius-control)] bg-surface-sunken p-3">
-      <span className="hex text-sm break-all">
-        <span className="text-text-subtle">0x</span>
-        <span className="text-text-subtle">{zeros}</span>
-        <span className="text-text-subtle">{"·".repeat(Math.max(0, Math.floor(tail / 2)))}</span>
-        <span className="font-medium text-accent-strong">{shown}</span>
-        <span className="text-text-subtle">{"·".repeat(Math.max(0, Math.ceil(tail / 2)))}</span>
+      <span className="hex flex w-full items-baseline overflow-hidden text-sm whitespace-nowrap">
+        <span className="shrink-0 text-text-subtle">0x{zeros}</span>
+        <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
+          {"·".repeat(Math.max(0, Math.floor(tail / 2)))}
+        </span>
+        <span className="shrink-0 font-medium text-accent-strong">{shown}</span>
+        <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
+          {"·".repeat(Math.max(0, Math.ceil(tail / 2)))}
+        </span>
       </span>
       {variants.length > 1 && (
         <span className="text-xs text-text-muted">
