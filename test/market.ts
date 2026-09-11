@@ -78,6 +78,29 @@ describe("ownership of the deployed payload", async function () {
   });
 });
 
+describe("what a listing records", async function () {
+  it("keeps the spec the seller declared, so a buyer need not guess", async function () {
+    const { maras, seller } = await deployMarket();
+    const mined = mineSalt(maras.address, ONE_ZERO_BYTE);
+
+    await maras.write.commitSalt([commitHashFor(mined.salt, seller.account.address)]);
+    await maras.write.listNamed([
+      mined.salt,
+      0n,
+      { ...EMPTY_SPEC, minZeroBytes: 1, patterns: NO_PATTERNS, patternCount: 0 },
+    ]);
+
+    const listing = (await maras.read.getNamedListing([0n])) as unknown as {
+      predicted: Address;
+      spec: { minZeroBytes: number; patternCount: number };
+    };
+
+    assert.equal(getAddress(listing.predicted), getAddress(mined.address));
+    assert.equal(listing.spec.minZeroBytes, 1);
+    assert.equal(listing.spec.patternCount, 0);
+  });
+});
+
 describe("commitment binding", async function () {
   it("rejects a reveal with no prior commitment", async function () {
     const { maras } = await deployMarket();

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { AgentPrompts } from "@/components/AgentPrompts";
 import { MARAS_ADDRESS } from "@/lib/maras.generated";
 
 export const metadata: Metadata = {
@@ -38,9 +40,9 @@ export default function ApiDocsPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-10 px-5 py-12 sm:px-8">
       <header className="flex flex-col gap-3">
-        <a href="/" className="text-sm text-text-muted hover:text-text">
+        <Link href="/" className="text-sm text-text-muted hover:text-text">
           ← Maras
-        </a>
+        </Link>
         <h1 className="text-2xl font-extrabold text-text">Maras MCP</h1>
         <p className="max-w-2xl text-text-muted">
           A hosted MCP server for buying and selling mined contract addresses on Base Sepolia.
@@ -95,6 +97,8 @@ export default function ApiDocsPage() {
           {EXAMPLE}
         </pre>
       </section>
+
+      <AgentPrompts />
 
       <footer className="mt-auto flex flex-wrap gap-x-5 gap-y-2 border-t border-edge pt-6 text-xs text-text-subtle">
         <span>Base Sepolia · chain 84532</span>

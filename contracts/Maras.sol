@@ -19,12 +19,15 @@ contract Maras {
         uint8 patternNibbles;
     }
 
+    /// @dev The spec is kept so a buyer can see what the seller claimed and the contract checked,
+    /// rather than having to guess from the address what it was mined for.
     struct NamedListing {
         address seller;
         uint96 price;
         bytes32 salt;
         address predicted;
         bool sold;
+        Spec spec;
     }
 
     struct SealedListing {
@@ -136,7 +139,8 @@ contract Maras {
                 price: price,
                 salt: salt,
                 predicted: predicted,
-                sold: false
+                sold: false,
+                spec: spec
             })
         );
 

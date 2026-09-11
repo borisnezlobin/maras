@@ -58,4 +58,50 @@ contract MarasGettersTest is Test {
     function test_DeliveryWindowIsTenMinutes() public view {
         assertEq(maras.DELIVERY_WINDOW(), 10 minutes);
     }
+
+    /// @dev A buyer should be able to read what the seller claimed, rather than guessing from
+    /// the address which of its features it was mined for.
+    function test_NamedListingKeepsTheDeclaredSpec() public {
+        Maras.Spec memory spec;
+        spec.minZeroBytes = 0;
+        spec.patterns[0] = bytes4(uint32(0x0000cafe));
+        spec.patternCount = 1;
+        spec.patternNibbles = 4;
+
+        bytes32 salt = _saltContaining("cafe");
+
+        maras.commitSalt(keccak256(abi.encode(salt, address(this))));
+        vm.roll(block.number + 1);
+        maras.listNamed(salt, 0.01 ether, spec);
+
+        Maras.NamedListing memory listing = maras.getNamedListing(0);
+
+        assertEq(listing.spec.patternCount, 1);
+        assertEq(listing.spec.patterns[0], bytes4(uint32(0x0000cafe)));
+        assertEq(listing.spec.patternNibbles, 4);
+        assertEq(listing.price, 0.01 ether);
+    }
+
+    /// @dev Grinds for an address the contract will accept, mirroring what the miner does.
+    function _saltContaining(string memory word) internal view returns (bytes32) {
+        Maras.Spec memory spec;
+        spec.patterns[0] = bytes4(uint32(0x0000cafe));
+        spec.patternCount = 1;
+        spec.patternNibbles = 4;
+        word; // the spec above is the machine-readable form of it
+
+        for (uint256 attempt = 0; attempt < 500_000; attempt++) {
+            bytes32 salt = bytes32(attempt);
+            if (_contains(maras.predictAddress(salt))) return salt;
+        }
+        revert("no matching salt found");
+    }
+
+    function _contains(address addr) internal pure returns (bool) {
+        uint256 value = uint160(addr);
+        for (uint256 shift = 0; shift <= 144; shift += 4) {
+            if (((value >> shift) & 0xffff) == 0xcafe) return true;
+        }
+        return false;
+    }
 }
