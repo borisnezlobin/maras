@@ -74,7 +74,7 @@ export function Market() {
 
   const market = MARAS_ADDRESS;
 
-  const { data: count, isPending } = useReadContract({
+  const { data: count, isPending: isLoadingCount } = useReadContract({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "namedListingCount",
@@ -102,7 +102,11 @@ export function Market() {
           />
         </Field>
         <span className="text-sm text-text-muted">
-          {isPending ? "Checking the chain…" : ids.length === 0 ? "Nothing listed yet" : `${ids.length} listed`}
+          {isLoadingCount
+            ? "Checking the chain…"
+            : ids.length === 0
+              ? "Nothing listed yet"
+              : `${ids.length} listed`}
         </span>
       </div>
 
@@ -135,7 +139,7 @@ export function Market() {
         ))}
       </div>
 
-      {!isPending && ids.length === 0 && (
+      {!isLoadingCount && ids.length === 0 && (
         <Card className="flex items-center gap-3">
           <Hammer size={20} className="text-accent" />
           <p className="text-sm text-text-muted">
