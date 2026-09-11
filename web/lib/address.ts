@@ -42,6 +42,20 @@ export function hookPermissions(address: string): string[] {
   return HOOK_FLAGS.filter(([bit]) => ((mask >> bit) & 1) === 1).map(([, name]) => name);
 }
 
+export function maskFromFlags(bits: readonly number[]): number {
+  return bits.reduce((mask, bit) => mask | (1 << bit), 0);
+}
+
+/**
+ * True when the address carries at least the requested permissions. V4 itself demands the low
+ * fourteen bits equal a hook's declared set exactly, so an address always has one permission set
+ * rather than a range — asking for a subset finds the addresses whose set includes it.
+ */
+export function hasPermissions(address: string, bits: readonly number[]): boolean {
+  const wanted = maskFromFlags(bits);
+  return (hookMask(address) & wanted) === wanted;
+}
+
 /**
  * Nibble-aligned search, identical to the contract. Alignment by nibble is what lets a pattern
  * be an odd number of hex characters and start anywhere in the address.

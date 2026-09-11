@@ -3,7 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { encodeFunctionData, formatEther, keccak256, parseEther, type Address, type Hex } from "viem";
 import { z } from "zod";
 
-import { leadingZeroBytes } from "@/lib/address";
+import { hasPermissions, hookPermissions, HOOK_FLAGS, leadingZeroBytes } from "@/lib/address";
 import { commitHashFor } from "@/lib/commit";
 import { describeCost, describeEffort, expandLoose, expectedAttempts } from "@/lib/leet";
 import { marasAbi } from "@/lib/maras.generated";
@@ -26,6 +26,7 @@ import {
   readNamed,
   readRequest,
   readSealed,
+  type Identified,
   type NamedListing,
   type OnChainSpecRecord,
 } from "@/lib/mcp/reads";
@@ -64,14 +65,43 @@ interface ListingFilters {
   minZeroBytes: number;
   needle?: string;
   ceiling?: bigint;
+  hookFlags: number[];
 }
 
 function matchesFilters(listing: NamedListing, filters: ListingFilters): boolean {
   if (listing.sold) return false;
   if (leadingZeroBytes(listing.predicted) < filters.minZeroBytes) return false;
   if (filters.ceiling !== undefined && listing.price > filters.ceiling) return false;
+  if (!hasPermissions(listing.predicted, filters.hookFlags)) return false;
   if (filters.needle === undefined) return true;
   return listing.predicted.slice(2).toLowerCase().includes(filters.needle);
+}
+
+type NamedSort = "newest" | "cheapest" | "permissions";
+type NamedEntry = Identified<NamedListing>;
+
+function namedComparator(sort: NamedSort): (a: NamedEntry, b: NamedEntry) => number {
+  if (sort === "cheapest") {
+    return (a, b) => (a.record.price === b.record.price ? 0 : a.record.price < b.record.price ? -1 : 1);
+  }
+  if (sort === "permissions") {
+    return (a, b) =>
+      hookPermissions(b.record.predicted).length - hookPermissions(a.record.predicted).length;
+  }
+  return (a, b) => Number(b.id - a.id);
+}
+
+/** Permissions arrive by name, since a caller should not have to know which bit each one is. */
+function flagsFromNames(names: readonly string[]): number[] {
+  return names.map((name) => {
+    const found = HOOK_FLAGS.find(([, flag]) => flag.toLowerCase() === name.toLowerCase());
+    if (found === undefined) {
+      throw new Error(
+        `"${name}" is not a V4 permission. Valid names: ${HOOK_FLAGS.map(([, flag]) => flag).join(", ")}.`,
+      );
+    }
+    return found[0];
+  });
 }
 
 /**
@@ -109,22 +139,31 @@ function registerSearches(server: McpServer): void {
     {
       title: "Search mined contract addresses",
       description:
-        "Lists addresses for sale, filtered by leading zero bytes, a hex pattern, or price. These are named listings: you can see exactly what you are buying.",
+        "Lists addresses for sale, filtered by leading zero bytes, a hex pattern, price, or the Uniswap V4 hook permissions the address carries. These are named listings: you can see exactly what you are buying.",
       inputSchema: {
         minZeroBytes: z.number().int().min(0).max(20).default(0),
         contains: PATTERN.optional(),
         maxPriceEth: z.string().optional(),
+        permissions: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "V4 permission names the address must include, such as beforeSwap. An address may carry others too.",
+          ),
+        sort: z.enum(["newest", "cheapest", "permissions"]).default("newest"),
       },
     },
-    async ({ minZeroBytes, contains, maxPriceEth }) => {
+    async ({ minZeroBytes, contains, maxPriceEth, permissions, sort }) => {
       const filters = {
         minZeroBytes,
         needle: contains?.toLowerCase(),
         ceiling: maxPriceEth === undefined ? undefined : parseEther(maxPriceEth),
+        hookFlags: flagsFromNames(permissions ?? []),
       };
 
       const rows = (await readAllNamed())
         .filter((entry) => matchesFilters(entry.record, filters))
+        .sort(namedComparator(sort))
         .map((entry) => describeNamed(entry.id, entry.record));
 
       return text(rows.length === 0 ? "Nothing for sale matches." : rows.join("\n"));

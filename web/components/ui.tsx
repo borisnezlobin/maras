@@ -108,7 +108,7 @@ export function TogglePill({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+      className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
         active ? "bg-accent text-text-inverse" : inactive
       }`}
     >
