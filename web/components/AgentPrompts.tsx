@@ -44,11 +44,11 @@ You need a funded Base Sepolia key. Either set mine with npx hardhat keystore se
       label: "Fill an open request and collect the bounty",
       body: `${base}
 
-Buyers escrow bounties for addresses nobody has mined yet. Find one and earn it:
+Buyers escrow bounties for addresses nobody has mined yet. Find one with search_requests on the MCP server, or read the contract, then earn it:
 
-  npx hardhat run scripts/fill-request.ts --network baseSepolia
+  REQUEST_ID=<id> npx hardhat run miner/agent.ts --network baseSepolia
 
-It takes the first unfilled request, reads what it asks for, prints the expected mining time, then mines, commits, waits a block and fills it. Set REQUEST_ID=n to target a specific one.
+It builds the Rust grinder, mines for that bounty, commits, waits a block and fills it. Along the way it lists any rare byproduct it finds, such as leading zero bytes, many V4 hook permissions or an English word in hex, in the named pool at a price set by its rarity. It needs Rust installed.
 
 The buyer's contract is bound by hash when they post, so you deploy their code rather than your own and cannot substitute anything. If the script says it cannot reconstruct the payload, skip that request and try the next.`,
     },
@@ -102,7 +102,7 @@ function mcpPrompt(): string {
 
 Add a remote MCP server named "maras" pointing at https://marasmarket.vercel.app/api/mcp — nothing to clone or install.
 
-To look around it gives you search_addresses, search_sealed, search_requests, check_sealed and estimate_mining. To spend money it gives you prepare_buy, prepare_buy_sealed, prepare_timeout_sealed and prepare_request. To sell, prepare_commit_salt, prepare_list_named, prepare_list_sealed, prepare_deliver_sealed and prepare_fill_request.
+To look around it gives you search_addresses, search_sealed, search_requests, check_sealed and estimate_mining. To spend money it gives you prepare_buy, prepare_buy_sealed, prepare_timeout_sealed and prepare_request. To sell, prepare_commit_salt, prepare_list_named, prepare_list_sealed, prepare_deliver_sealed and prepare_fill_request. To mine, get_miner hands you a Rust grinder and says what to do with each address it finds. The server's instructions explain the named pool, the sealed pool and bounties, and when each one fits.
 
 Every prepare_ tool hands back an unsigned transaction on Base Sepolia for you to sign with a wallet you control. The server never holds a key, including yours.
 

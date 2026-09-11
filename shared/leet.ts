@@ -83,8 +83,12 @@ export const GPU_HASHES_PER_SECOND = 600_000_000;
 export const GPU_USD_PER_HOUR = 0.4;
 
 /** What the grind would cost someone who rents the compute rather than waits for it. */
+export function gpuCostUsd(attempts: number): number {
+  return (attempts / GPU_HASHES_PER_SECOND / 3_600) * GPU_USD_PER_HOUR;
+}
+
 export function describeCost(attempts: number): string {
-  const usd = (attempts / GPU_HASHES_PER_SECOND / 3_600) * GPU_USD_PER_HOUR;
+  const usd = gpuCostUsd(attempts);
   if (usd < 0.01) return "under a cent";
   if (usd < 1) return `about ${Math.max(1, Math.round(usd * 100))} cents`;
   if (usd < 10) return `about $${usd.toFixed(2)}`;
@@ -108,4 +112,22 @@ export function describeEffort(attempts: number, hashesPerSecond = GPU_HASHES_PE
 
 function trim(value: number): string {
   return value < 10 ? value.toFixed(1) : String(Math.round(value));
+}
+
+/** Testnet ETH has no market price, so listings are priced as if it traded at this rate. */
+export const ASSUMED_ETH_USD = 2_500;
+
+/** A seller asks this multiple of what the grind would cost a buyer to rent. */
+export const LISTING_MARKUP = 10;
+
+/** Below this a listing costs the seller more in gas than it could ever earn. */
+export const LISTING_FLOOR_ETH = 0.0001;
+
+/**
+ * Kept in step with web/lib/leet.ts. Takes rarity in bits, which is what the grinder reports
+ * for each find, and returns a decimal string ready for parseEther.
+ */
+export function listingPriceEth(rarityBits: number): string {
+  const eth = (gpuCostUsd(2 ** rarityBits) * LISTING_MARKUP) / ASSUMED_ETH_USD;
+  return String(Number(Math.max(LISTING_FLOOR_ETH, eth).toPrecision(2)));
 }

@@ -137,3 +137,18 @@ export function describeEffort(attempts: number): string {
 function trim(value: number): string {
   return value < 10 ? value.toFixed(1) : String(Math.round(value));
 }
+
+/** Testnet ETH has no market price, so listings are priced as if it traded at this rate. */
+export const ASSUMED_ETH_USD = 2_500;
+
+/** A seller asks this multiple of what the grind would cost a buyer to rent. */
+export const LISTING_MARKUP = 10;
+
+/** Below this a listing costs the seller more in gas than it could ever earn. */
+export const LISTING_FLOOR_ETH = 0.0001;
+
+/** Takes rarity in bits, as the grinder reports each find, and returns a parseEther string. */
+export function listingPriceEth(rarityBits: number): string {
+  const eth = (gpuCostUsd(2 ** rarityBits) * LISTING_MARKUP) / ASSUMED_ETH_USD;
+  return String(Number(Math.max(LISTING_FLOOR_ETH, eth).toPrecision(2)));
+}
