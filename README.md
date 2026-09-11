@@ -7,7 +7,8 @@ transaction.
 Named for the salt evaporation terraces at Maras in Peru, where pink salt is harvested from shallow
 pans. The palette comes from the place.
 
-**Contract:** _pending deployment_ — address and Basescan link go here.
+**Contract:** [`0x770b9bc702490fa26f7a9d25754227b9a77fc23a`](https://sepolia.basescan.org/address/0x770b9bc702490fa26f7a9d25754227b9a77fc23a)
+on Base Sepolia (chainId 84532), deployed at block 46669383.
 
 ## The vertical
 
