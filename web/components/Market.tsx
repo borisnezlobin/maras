@@ -2,7 +2,7 @@
 
 import { CircleNotch, Cube } from "@phosphor-icons/react";
 import { useMemo } from "react";
-import { encodeDeployData, type Address } from "viem";
+import type { Address } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 
 import { AddressText } from "@/components/AddressText";
@@ -17,7 +17,8 @@ import {
   leadingZeroBytes,
 } from "@/lib/address";
 import { declaredWords, type NamedListingRecord } from "@/lib/listing";
-import { MARAS_ADDRESS, marasAbi, ownedVaultAbi, ownedVaultBytecode } from "@/lib/maras.generated";
+import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
+import { payloadInitCode } from "@/lib/payload";
 
 export type SortKey = "rarest" | "cheapest" | "newest" | "permissions";
 
@@ -212,11 +213,7 @@ export function Market({
       functionName: "buyNamed",
       args: [
         listing.id,
-        encodeDeployData({
-          abi: ownedVaultAbi,
-          bytecode: ownedVaultBytecode,
-          args: [account as Address],
-        }),
+        payloadInitCode(account as Address),
       ],
       value: listing.price,
     });

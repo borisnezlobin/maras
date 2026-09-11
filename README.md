@@ -13,6 +13,36 @@ transaction.
 Named for the salt terraces at Maras in Peru, where pink salt is harvested from shallow pans.
 Miners here harvest salts too.
 
+## Why salts
+
+The brief asks for a market in information an agent cannot inspect before paying, which runs
+straight into Arrow's information paradox. To prove information is worth buying you have to show
+it, and showing it gives it away. Selling it even once makes it public in effect, because the buyer
+can republish it, so its resale value drops to zero. Most information escapes the paradox by being
+sampleable: a buyer checks a random slice of a dataset before paying for the rest. What survives
+is either many small, fresh things, like measurements behind an API, or a few valuable private
+things.
+
+So I looked for information that is far cheaper to verify than to produce, the same asymmetry as
+NP, where checking an answer is easy and finding one is hard. A CREATE3 salt fits that exactly.
+Finding a salt whose address starts with five zero bytes takes about 2⁴⁰ hashes, and checking one
+takes two. Buyers for these addresses already exist (below), yet nobody sells them. Everyone runs
+their own miner and throws away every rare address that isn't the one they were searching for.
+
+A salt is also the paradox in its purest form. If a salt worked anywhere, showing it would give it
+away: the buyer could deploy with it and never pay. And a seller who put it in a transaction could
+be front-run by anyone watching the mempool. Maras gets around both by making the market contract
+the only factory a salt works in. A salt produces its address only when this contract deploys it,
+and the contract deploys only against payment, so a named listing can show its salt openly. A
+commit one block before the reveal handles the mempool. Sealed listings and bounties keep the salt
+hidden until payment anyway, for buyers who want any address in a tier rather than one specific
+address.
+
+That is also why this has to live on chain. Before paying, a buyer wants to know two things: does
+the seller actually hold a salt for this address, and will the buyer be able to deploy there? An
+off-chain escrow could only promise both. The contract answers both itself, because it derives the
+address from the salt and deploys the buyer's code in the same transaction that pays the seller.
+
 ## The vertical
 
 A contract's address is a hash, so you cannot choose one — you can only try salts until one comes

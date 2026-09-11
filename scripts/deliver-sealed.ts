@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { network } from "hardhat";
 import { formatEther, getAddress, keccak256, type Address, type Hex } from "viem";
 
-import { marketAddress, vaultInitCode } from "../shared/market.js";
+import { marketAddress, rebuildPayload } from "../shared/market.js";
 
 /**
  * Seller side of the delivery window. Waits for someone to buy the sealed listing, then reveals
@@ -81,8 +81,8 @@ if (remaining <= 0) throw new Error("the delivery window has already closed");
 
 // The buyer committed this exact creation code by hash when they paid, so rebuilding it from
 // their address has to reproduce the hash the contract will check.
-const initCode = vaultInitCode(getAddress(listing.buyer));
-if (keccak256(initCode) !== listing.initCodeHash) {
+const initCode = rebuildPayload(getAddress(listing.buyer), listing.initCodeHash);
+if (initCode === undefined) {
   throw new Error(
     `the buyer bound a payload this script cannot rebuild (${listing.initCodeHash}); deliver it manually`,
   );

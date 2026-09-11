@@ -13,7 +13,7 @@ import {
   marketAddress,
   onChainSpec,
   specFromChain,
-  vaultInitCode,
+  rebuildPayload,
   type OnChainSpec,
 } from "../shared/market.js";
 
@@ -81,8 +81,8 @@ async function loadBounty(id: bigint): Promise<Bounty> {
   if (request.filled) throw new Error(`bounty #${id} is already filled`);
 
   // The buyer bound their payload by hash when posting, so only this exact code can fill it.
-  const initCode = vaultInitCode(request.buyer);
-  if (keccak256(initCode) !== request.initCodeHash.toLowerCase()) {
+  const initCode = rebuildPayload(request.buyer, request.initCodeHash);
+  if (initCode === undefined) {
     throw new Error(`bounty #${id} binds a payload this agent cannot rebuild`);
   }
   return { id, spec: specFromChain(request.spec), initCode };

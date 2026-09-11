@@ -18,7 +18,7 @@ import {
   padPatterns,
 } from "@/lib/leet";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
-import { vaultInitCodeHash } from "@/lib/payload";
+import { payloadInitCodeHash } from "@/lib/payload";
 
 const ZERO_CHOICES = [0, 1, 2, 3, 4, 5, 6];
 const ADDRESS_NIBBLES = 40;
@@ -315,7 +315,7 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
       address: MARAS_ADDRESS as Address,
       abi: marasAbi,
       functionName: "postRequest",
-      args: [spec, vaultInitCodeHash(account as Address)],
+      args: [spec, payloadInitCodeHash(account as Address)],
       value: parseEther(bountyEth),
     });
   }

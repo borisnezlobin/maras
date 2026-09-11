@@ -11,7 +11,7 @@ import {
   marasAbi,
   marketAddress,
   onChainSpec,
-  vaultInitCode,
+  payloadInitCode,
 } from "../shared/market.js";
 
 interface OnChainSpecRecord {
@@ -141,7 +141,7 @@ server.registerTool(
   {
     title: "Buy a mined address",
     description:
-      "Buys a listed address and deploys an OwnedVault there owned by `owner`. Payment and deployment happen in one transaction, so a failed purchase costs only gas.",
+      "Buys a listed address and deploys a proxy there owned by `owner`, which they can later point at any contract. Payment and deployment happen in one transaction, so a failed purchase costs only gas.",
     inputSchema: {
       id: z.number().int().min(0),
       owner: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
@@ -156,7 +156,7 @@ server.registerTool(
       address: marketAddress(),
       abi: marasAbi,
       functionName: "buyNamed",
-      args: [BigInt(id), vaultInitCode(owner as Address)],
+      args: [BigInt(id), payloadInitCode(owner as Address)],
       value: listing.price,
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -183,7 +183,7 @@ server.registerTool(
   async ({ minZeroBytes, pattern, loose, hookMask, owner, bountyEth }) => {
     const { publicClient, walletClient } = chainClients();
     const { spec, patterns } = buildSpec({ minZeroBytes, pattern, loose, hookMask });
-    const initCode = vaultInitCode(owner as Address);
+    const initCode = payloadInitCode(owner as Address);
 
     const attempts = expectedAttempts({
       minZeroBytes,

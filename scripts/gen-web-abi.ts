@@ -8,6 +8,9 @@ const maras = JSON.parse(readFileSync("artifacts/contracts/Maras.sol/Maras.json"
 const vault = JSON.parse(
   readFileSync("artifacts/contracts/templates/OwnedVault.sol/OwnedVault.json", "utf8"),
 );
+const proxy = JSON.parse(
+  readFileSync("artifacts/contracts/templates/OwnedProxy.sol/OwnedProxy.json", "utf8"),
+);
 
 const deploymentPath = "deployments/baseSepolia.json";
 const deployed = existsSync(deploymentPath)
@@ -29,6 +32,9 @@ export const marasAbi = ${JSON.stringify(maras.abi)} as const satisfies Abi;
 
 export const ownedVaultAbi = ${JSON.stringify(vault.abi)} as const satisfies Abi;
 export const ownedVaultBytecode = "${vault.bytecode}" as Hex;
+
+export const ownedProxyAbi = ${JSON.stringify(proxy.abi)} as const satisfies Abi;
+export const ownedProxyBytecode = "${proxy.bytecode}" as Hex;
 `;
 
 mkdirSync("web/lib", { recursive: true });
