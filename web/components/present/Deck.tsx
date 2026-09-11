@@ -55,11 +55,13 @@ function Stage({ index }: { index: number }) {
 
   return (
     <div
-      className={`flex w-full flex-1 items-center justify-center px-6 transition-all duration-200 ease-out sm:px-12 ${
+      className={`flex min-h-0 w-full flex-1 items-center justify-center px-6 py-10 transition-all duration-200 ease-out sm:px-16 ${
         entering ? "scale-[0.97] opacity-0 blur-md" : "scale-100 opacity-100 blur-0"
       }`}
     >
-      {SLIDES[shown].render()}
+      <div className="flex w-full max-w-5xl items-center justify-center">
+        {SLIDES[shown].render()}
+      </div>
     </div>
   );
 }
