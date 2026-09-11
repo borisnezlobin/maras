@@ -4,7 +4,7 @@ import { parseEventLogs, parseEther, type Address, type Hex } from "viem";
 import { measureRate, mineSalt } from "../miner/mine.js";
 import type { Spec } from "../shared/create3.js";
 import { marasAbi } from "../shared/generated/abi.js";
-import { describeEffort, expandLoose, expectedAttempts } from "../shared/leet.js";
+import { describeCost, describeEffort, expandLoose, expectedAttempts } from "../shared/leet.js";
 import { commitHashFor, marketAddress, onChainSpec } from "../shared/market.js";
 
 /**
@@ -43,8 +43,9 @@ if (spec.hookMask !== undefined) console.log(`Hook     0x${spec.hookMask.toStrin
 
 const rate = measureRate(market as Address);
 console.log(
-  `Expected ~${Math.round(attempts).toLocaleString()} attempts, ${describeEffort(attempts, rate)} at ${Math.round(rate).toLocaleString()}/s on this machine\n`,
+  `Expected ~${Math.round(attempts).toLocaleString()} attempts, ${describeEffort(attempts, rate)} at ${Math.round(rate).toLocaleString()}/s on this machine`,
 );
+console.log(`Worth  ${describeCost(attempts)} of rented GPU time, so price it above that\n`);
 
 const startedAt = Date.now();
 const mined = mineSalt(market as Address, spec, (attempts) => {

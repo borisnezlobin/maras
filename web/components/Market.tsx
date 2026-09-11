@@ -7,8 +7,8 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 
 import { AddressTiles } from "@/components/AddressTiles";
 import { ConnectGate } from "@/components/ConnectGate";
-import { Badge, Button, Card } from "@/components/ui";
-import { findNibbleRun, formatEth, hookMask, leadingZeroBytes, shortHex } from "@/lib/address";
+import { Badge, Button, Card, Hint } from "@/components/ui";
+import { findNibbleRun, formatEth, hookPermissions, leadingZeroBytes } from "@/lib/address";
 import { MARAS_ADDRESS, marasAbi, ownedVaultAbi, ownedVaultBytecode } from "@/lib/maras.generated";
 
 interface Listing {
@@ -20,20 +20,16 @@ interface Listing {
 function ListingCard({
   listing,
   patterns,
-  hooksWanted,
   busy,
   onBuy,
 }: {
   listing: Listing;
   patterns: string[];
-  hooksWanted?: number;
   busy: boolean;
   onBuy: () => void;
 }) {
   const zeros = leadingZeroBytes(listing.predicted);
-  // Every address has low bits, so showing them unconditionally labels noise as a feature.
-  // Only a match against the mask the buyer filtered for says anything.
-  const hooks = hooksWanted === undefined ? 0 : hookMask(listing.predicted);
+  const permissions = hookPermissions(listing.predicted);
 
   return (
     <Card className="flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-[var(--shadow-lift)]">
@@ -41,19 +37,32 @@ function ListingCard({
         <AddressTiles address={listing.predicted} patterns={patterns} scale={1.5} />
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-2.5 p-4">
         <span className="text-xl font-bold text-text">{formatEth(listing.price)}</span>
-        <span className="hex text-xs text-text-muted">{shortHex(listing.predicted)}</span>
-        {(zeros > 0 || hooks !== 0) && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {zeros > 0 && (
-              <Badge tone="accent">{zeros === 1 ? "1 zero byte" : `${zeros} zero bytes`}</Badge>
-            )}
-            {hooks !== 0 && <Badge>V4 bits 0x{hooks.toString(16)}</Badge>}
-          </div>
-        )}
-        <ConnectGate className="mt-2 w-full">
-          <Button className="mt-2 w-full" onClick={onBuy} disabled={busy}>
+        <span className="hex text-xs leading-relaxed break-all text-text">
+          {listing.predicted}
+        </span>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {zeros > 0 && (
+            <Badge tone="accent">{zeros === 1 ? "1 zero byte" : `${zeros} zero bytes`}</Badge>
+          )}
+          <Badge>
+            {permissions.length === 1
+              ? "1 V4 permission"
+              : `${permissions.length} V4 permissions`}
+          </Badge>
+          <Hint
+            text={
+              permissions.length === 0
+                ? "None of the Uniswap V4 permission bits are set in this address, so it cannot act as a hook."
+                : `Usable as a Uniswap V4 hook with: ${permissions.join(", ")}.`
+            }
+          />
+        </div>
+
+        <ConnectGate className="mt-1 w-full">
+          <Button className="mt-1 w-full" onClick={onBuy} disabled={busy}>
             {busy ? <CircleNotch size={16} className="animate-spin" /> : <Cube size={16} />}
             Buy and deploy
           </Button>
@@ -68,7 +77,6 @@ function ListingSlot({
   market,
   minZeroBytes,
   patterns,
-  hooksOnly,
   busy,
   onBuy,
 }: {
@@ -76,7 +84,6 @@ function ListingSlot({
   market: Address;
   minZeroBytes: number;
   patterns: string[];
-  hooksOnly: boolean;
   busy: boolean;
   onBuy: (listing: Listing) => void;
 }) {
@@ -94,18 +101,11 @@ function ListingSlot({
   if (record.sold) return null;
   if (leadingZeroBytes(record.predicted) < minZeroBytes) return null;
   if (patterns.length > 0 && findNibbleRun(record.predicted, patterns) === null) return null;
-  if (hooksOnly && hookMask(record.predicted) === 0) return null;
 
   const listing: Listing = { id, price: record.price, predicted: record.predicted };
 
   return (
-    <ListingCard
-      listing={listing}
-      patterns={patterns}
-      hooksWanted={hooksOnly ? hookMask(record.predicted) : undefined}
-      busy={busy}
-      onBuy={() => onBuy(listing)}
-    />
+    <ListingCard listing={listing} patterns={patterns} busy={busy} onBuy={() => onBuy(listing)} />
   );
 }
 
@@ -115,7 +115,7 @@ function Skeleton() {
       <div className="h-[118px] animate-pulse bg-surface-sunken" />
       <div className="flex flex-col gap-2 p-4">
         <div className="h-6 w-20 animate-pulse rounded bg-surface-sunken" />
-        <div className="h-3 w-32 animate-pulse rounded bg-surface-sunken" />
+        <div className="h-3 w-full animate-pulse rounded bg-surface-sunken" />
       </div>
     </Card>
   );
@@ -124,11 +124,9 @@ function Skeleton() {
 export function Market({
   minZeroBytes,
   patterns,
-  hooksOnly,
 }: {
   minZeroBytes: number;
   patterns: string[];
-  hooksOnly: boolean;
 }) {
   const { address: account } = useAccount();
   const { writeContract, isPending } = useWriteContract();
@@ -184,7 +182,6 @@ export function Market({
           market={market}
           minZeroBytes={minZeroBytes}
           patterns={patterns}
-          hooksOnly={hooksOnly}
           busy={isPending}
           onBuy={(listing) =>
             writeContract({

@@ -79,6 +79,18 @@ export function expectedAttempts(input: {
 
 export const GPU_HASHES_PER_SECOND = 600_000_000;
 
+/** Roughly what an hour on a rented consumer GPU costs on the spot markets. */
+export const GPU_USD_PER_HOUR = 0.4;
+
+/** What the grind would cost someone who rents the compute rather than waits for it. */
+export function describeCost(attempts: number): string {
+  const usd = (attempts / GPU_HASHES_PER_SECOND / 3_600) * GPU_USD_PER_HOUR;
+  if (usd < 0.01) return "under a cent";
+  if (usd < 1) return `about ${Math.max(1, Math.round(usd * 100))} cents`;
+  if (usd < 10) return `about $${usd.toFixed(2)}`;
+  return `about $${Math.round(usd).toLocaleString()}`;
+}
+
 /**
  * Kept in step with web/lib/leet.ts. The rate is a parameter because the shipped miner runs a
  * few orders of magnitude slower than a dedicated GPU one, and quoting the wrong machine's

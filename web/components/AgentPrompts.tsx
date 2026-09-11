@@ -61,7 +61,7 @@ Call search_addresses to see what is for sale, then pick the best value for me. 
 Payment and deployment happen in one transaction, so a failed purchase costs only gas. Tell me what you bought, what it cost, and the Basescan link.`,
     },
     {
-      label: "Put up a bounty for one nobody has",
+      label: "Post a bounty for an address nobody has mined",
       body: `Use the Maras MCP server on Base Sepolia (${market}).
 
 Ask me what the address should look like, then call post_request with those settings, owner set to my wallet address, and a bounty you think is enough to interest a miner.
@@ -71,21 +71,13 @@ Turn loose matching on if the pattern has letters with lookalikes, since accepti
   ];
 }
 
-function mcpConfig(): string {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        maras: {
-          command: "npx",
-          args: ["tsx", "mcp/server.ts"],
-          cwd: "/path/to/maras",
-          env: { BASE_SEPOLIA_PRIVATE_KEY: "0xyour-testnet-key" },
-        },
-      },
-    },
-    null,
-    2,
-  );
+function mcpPrompt(): string {
+  return `Install the Maras MCP server so you can buy and sell contract addresses for me.
+
+1. Clone ${REPO} and run pnpm install.
+2. Add an MCP server named "maras" to your config, running "npx tsx mcp/server.ts" with the working directory set to the folder you just cloned.
+3. It needs one environment variable, BASE_SEPOLIA_PRIVATE_KEY, set to a funded Base Sepolia key. If you do not have one, run npx tsx scripts/new-wallet.ts to generate a wallet and ask me to fund it from a faucet.
+4. Check it works by calling search_addresses, then tell me what is for sale.`;
 }
 
 function CopyControl({ text, label }: { text: string; label: string }) {
@@ -115,7 +107,7 @@ export function AgentPrompts() {
         <span className="text-sm text-text">
           Install the Maras MCP so your agent can use Maras
         </span>
-        <CopyControl text={mcpConfig()} label="Copy the MCP server config" />
+        <CopyControl text={mcpPrompt()} label="Copy the prompt that installs the MCP server" />
       </Card>
 
       <Card className="p-0">
