@@ -1,0 +1,19 @@
+{
+  "name": "bab-info-war",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@noble/hashes": "2.4.0",
+    "@nomicfoundation/hardhat-ignition": "^3.1.8",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
+    "@types/node": "^22.20.2",
+    "forge-std": "github:foundry-rs/forge-std#v1.16.2",
+    "hardhat": "^3.16.0",
+    "solady": "0.1.26",
+    "tsx": "4.23.13",
+    "typescript": "~6.0.3",
+    "viem": "^2.56.3",
+    "zod": "4.6.2"
+  }
+}
