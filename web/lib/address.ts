@@ -19,6 +19,29 @@ export function hookMask(address: string): number {
   return Number(BigInt(address) & HOOK_PERMISSION_MASK);
 }
 
+/** Uniswap V4 reads a hook's permissions from these bits of its own address. */
+const HOOK_FLAGS: ReadonlyArray<readonly [number, string]> = [
+  [13, "beforeInitialize"],
+  [12, "afterInitialize"],
+  [11, "beforeAddLiquidity"],
+  [10, "afterAddLiquidity"],
+  [9, "beforeRemoveLiquidity"],
+  [8, "afterRemoveLiquidity"],
+  [7, "beforeSwap"],
+  [6, "afterSwap"],
+  [5, "beforeDonate"],
+  [4, "afterDonate"],
+  [3, "beforeSwapReturnsDelta"],
+  [2, "afterSwapReturnsDelta"],
+  [1, "afterAddLiquidityReturnsDelta"],
+  [0, "afterRemoveLiquidityReturnsDelta"],
+];
+
+export function hookPermissions(address: string): string[] {
+  const mask = hookMask(address);
+  return HOOK_FLAGS.filter(([bit]) => ((mask >> bit) & 1) === 1).map(([, name]) => name);
+}
+
 /**
  * Nibble-aligned search, identical to the contract. Alignment by nibble is what lets a pattern
  * be an odd number of hex characters and start anywhere in the address.

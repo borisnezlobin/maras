@@ -40,7 +40,6 @@ function FilterPill({
 export function Marketplace() {
   const [minZeroBytes, setMinZeroBytes] = useState(0);
   const [search, setSearch] = useState("");
-  const [hooksOnly, setHooksOnly] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
   const patterns = isPatternShape(search) ? expandLoose(search, true) : [];
@@ -90,12 +89,9 @@ export function Marketplace() {
             </div>
           </div>
 
-          <FilterPill active={hooksOnly} onClick={() => setHooksOnly(!hooksOnly)}>
-            Uniswap V4 hooks
-          </FilterPill>
         </div>
 
-        <Market minZeroBytes={minZeroBytes} patterns={patterns} hooksOnly={hooksOnly} />
+        <Market minZeroBytes={minZeroBytes} patterns={patterns} />
         <SealedListings />
       </div>
 

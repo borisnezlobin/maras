@@ -109,6 +109,21 @@ export function expectedAttempts(input: EffortInput): number {
  * Rounded to one decimal place in each unit. Whole numbers hid the effect of toggling a single
  * spelling, which made a control that does something look like a control that does nothing.
  */
+/** Roughly what an hour on a rented consumer GPU costs on the spot markets. */
+export const GPU_USD_PER_HOUR = 0.4;
+
+export function gpuCostUsd(attempts: number): number {
+  return (attempts / GPU_HASHES_PER_SECOND / 3_600) * GPU_USD_PER_HOUR;
+}
+
+export function describeCost(attempts: number): string {
+  const usd = gpuCostUsd(attempts);
+  if (usd < 0.01) return "under a cent";
+  if (usd < 1) return `about ${Math.max(1, Math.round(usd * 100))} cents`;
+  if (usd < 10) return `about $${usd.toFixed(2)}`;
+  return `about $${Math.round(usd).toLocaleString()}`;
+}
+
 export function describeEffort(attempts: number): string {
   const seconds = attempts / GPU_HASHES_PER_SECOND;
   if (seconds < 1) return "under a second";

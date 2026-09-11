@@ -7,7 +7,14 @@ import { useAccount, useWriteContract } from "wagmi";
 
 import { ConnectGate } from "@/components/ConnectGate";
 import { Button, Field, Hint, IconButton, Input, TogglePill } from "@/components/ui";
-import { describeEffort, expandLoose, expectedAttempts, isPatternShape, padPatterns } from "@/lib/leet";
+import {
+  describeCost,
+  describeEffort,
+  expandLoose,
+  expectedAttempts,
+  isPatternShape,
+  padPatterns,
+} from "@/lib/leet";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { vaultInitCodeHash } from "@/lib/payload";
 
@@ -35,15 +42,13 @@ function specFor(zeroBytes: number, hookBits: boolean, accepted: string[]) {
   };
 }
 
-function effortFor(zeroBytes: number, hookBits: boolean, accepted: string[]): string {
-  return describeEffort(
-    expectedAttempts({
-      minZeroBytes: zeroBytes,
-      hookMask: hookBits ? HOOK_MASK : undefined,
-      patternNibbles: nibblesOf(accepted),
-      variantCount: accepted.length,
-    }),
-  );
+function attemptsFor(zeroBytes: number, hookBits: boolean, accepted: string[]): number {
+  return expectedAttempts({
+    minZeroBytes: zeroBytes,
+    hookMask: hookBits ? HOOK_MASK : undefined,
+    patternNibbles: nibblesOf(accepted),
+    variantCount: accepted.length,
+  });
 }
 
 function bountyIsValid(value: string): boolean {
@@ -57,14 +62,16 @@ function Preview({ zeroBytes, spelling }: { zeroBytes: number; spelling: string 
   // With nothing typed the two runs would meet at an empty span and read as a gap, so the
   // pattern only splits the fill once there is a pattern to show.
   const lead = spelling === "" ? fill : Math.floor(fill / 2);
-  const trail = spelling === "" ? 0 : Math.ceil(fill / 2);
+  const trail = spelling === "" ? 0 : fill - lead;
 
+  // Laid out inline rather than with flex: stretching the fill spans left a gap wherever the
+  // dots did not happen to fill the space exactly.
   return (
-    <div className="hex flex w-full items-baseline overflow-hidden rounded-[var(--radius-control)] bg-inert px-3 py-2.5 text-sm whitespace-nowrap">
-      <span className="shrink-0 text-text-subtle">0x{zeros}</span>
-      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">{"·".repeat(lead)}</span>
-      {spelling !== "" && <span className="shrink-0 font-medium text-accent">{spelling}</span>}
-      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">{"·".repeat(trail)}</span>
+    <div className="hex w-full overflow-hidden rounded-[var(--radius-control)] bg-inert px-3 py-2.5 text-sm text-ellipsis whitespace-nowrap">
+      <span className="text-text-subtle">0x{zeros}</span>
+      <span className="text-text-subtle">{"·".repeat(lead)}</span>
+      {spelling !== "" && <span className="font-medium text-accent">{spelling}</span>}
+      <span className="text-text-subtle">{"·".repeat(trail)}</span>
     </div>
   );
 }
@@ -135,6 +142,7 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
   const accepted = allSpellings.filter((spelling) => !dropped.includes(spelling));
   const patternOk = pattern === "" || isPatternShape(pattern);
   const ready = patternOk && bountyIsValid(bountyEth) && !isPending;
+  const attempts = attemptsFor(zeroBytes, hookBits, accepted);
 
   function toggle(spelling: string) {
     setDropped((current) =>
@@ -209,17 +217,20 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
         </Field>
 
         <div className="flex items-center justify-between gap-4 border-t border-edge pt-4">
-          <div className="flex flex-col">
-            <span className="text-xs text-text-subtle">Mining time on a GPU</span>
-            <span className="text-sm font-semibold text-text">
-              {effortFor(zeroBytes, hookBits, accepted)}
-              {allSpellings.length > 1 && (
-                <span className="font-normal text-text-muted">
-                  {" "}
-                  · {accepted.length} of {allSpellings.length} spellings
-                </span>
-              )}
+          <div className="flex flex-col gap-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-text-subtle">
+              Costs a miner
+              <Hint text="Time on one rented GPU at roughly $0.40 an hour. A bounty below this is not worth anyone's compute, so price it above." />
             </span>
+            <span className="text-sm font-semibold text-text">
+              {describeEffort(attempts)}
+              <span className="font-normal text-text-muted"> · {describeCost(attempts)}</span>
+            </span>
+            {allSpellings.length > 1 && (
+              <span className="text-xs text-text-muted">
+                {accepted.length} of {allSpellings.length} spellings
+              </span>
+            )}
           </div>
           <ConnectGate>
             <Button onClick={submit} disabled={!ready}>
