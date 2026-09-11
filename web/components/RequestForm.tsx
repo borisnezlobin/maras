@@ -128,9 +128,9 @@ export function RequestForm() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-edge pt-4">
           <p className="text-sm text-text-muted">
-            A miner should expect {effort}.
+            Costs a miner {effort}.
             {openRequests !== undefined && Number(openRequests) > 0
-              ? ` ${Number(openRequests)} posted so far.`
+              ? ` ${Number(openRequests)} request${Number(openRequests) === 1 ? " is" : "s are"} open.`
               : ""}
           </p>
           <Button onClick={submit} disabled={!ready}>

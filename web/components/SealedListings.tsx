@@ -135,7 +135,7 @@ function SealedCard({
       <div className="flex flex-col gap-3">
         <SealedPlaceholder />
         <SpecBadges spec={listing.spec} />
-        <p className="text-xs text-text-subtle">{effort}</p>
+        <p className="text-xs text-text-subtle">Mining cost: {effort}</p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-4 border-t border-edge pt-4">

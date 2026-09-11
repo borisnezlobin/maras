@@ -28,7 +28,17 @@ interface Listing {
   sold: boolean;
 }
 
-function ListingRow({ listing, onBuy, busy }: { listing: Listing; onBuy: () => void; busy: boolean }) {
+function ListingRow({
+  listing,
+  onBuy,
+  busy,
+  connected,
+}: {
+  listing: Listing;
+  onBuy: () => void;
+  busy: boolean;
+  connected: boolean;
+}) {
   const zeros = leadingZeroBytes(listing.predicted);
   const effort = describeEffort(expectedAttempts(zeros, false, false));
 
@@ -40,15 +50,15 @@ function ListingRow({ listing, onBuy, busy }: { listing: Listing; onBuy: () => v
           <Badge tone={zeros > 0 ? "accent" : "neutral"}>
             {zeros === 1 ? "1 leading zero byte" : `${zeros} leading zero bytes`}
           </Badge>
-          <span className="text-xs text-text-subtle">{effort}</span>
+          <span className="text-xs text-text-subtle">Mining cost: {effort}</span>
         </div>
       </div>
 
       <div className="flex items-center gap-4 shrink-0">
         <Stat label="Price" value={formatEth(listing.price)} />
-        <Button onClick={onBuy} disabled={busy}>
+        <Button onClick={onBuy} disabled={busy || !connected}>
           {busy ? <CircleNotch size={16} className="animate-spin" /> : <Cube size={16} />}
-          Buy and deploy here
+          {connected ? "Buy and deploy here" : "Connect a wallet to buy"}
         </Button>
       </div>
     </Card>
@@ -192,7 +202,8 @@ function ListingSlot({
   return (
     <ListingRow
       listing={listing}
-      busy={busy || account === undefined}
+      busy={busy}
+      connected={account !== undefined}
       onBuy={() => onBuy(listing)}
     />
   );
