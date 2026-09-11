@@ -15,18 +15,73 @@ const ENDPOINT = "https://marasmarket.vercel.app/api/mcp";
 const TOOLS = [
   {
     name: "search_addresses",
-    does: "Lists addresses for sale, newest contract first.",
-    args: "minZeroBytes, contains, maxPriceEth — all optional",
+    does: "Addresses for sale that you can see before buying.",
+    args: "minZeroBytes, contains, maxPriceEth",
+  },
+  {
+    name: "search_sealed",
+    does: "Addresses offered without being shown. Pay first, seller reveals after.",
+    args: "openOnly",
+  },
+  {
+    name: "search_requests",
+    does: "Bounties buyers escrowed for addresses nobody has mined yet.",
+    args: "openOnly",
+  },
+  {
+    name: "check_sealed",
+    does: "Whether a sealed listing sold, and how many seconds are left to deliver.",
+    args: "id",
+  },
+  {
+    name: "estimate_mining",
+    does: "What a grind costs in GPU time and rent, before you price or fund anything.",
+    args: "minZeroBytes, pattern, loose, hookMask",
   },
   {
     name: "prepare_buy",
-    does: "Builds the transaction that buys a listing and deploys a vault you own at that address.",
+    does: "Buys a listing and deploys a vault you own at that address.",
     args: "id, owner",
   },
   {
+    name: "prepare_buy_sealed",
+    does: "Buys a sealed listing sight unseen, against the seller's bond.",
+    args: "id, owner",
+  },
+  {
+    name: "prepare_timeout_sealed",
+    does: "Takes back your payment and the seller's bond after they miss the window.",
+    args: "id",
+  },
+  {
     name: "prepare_request",
-    does: "Builds the transaction that escrows a bounty for an address nobody has mined, and estimates the grind.",
-    args: "minZeroBytes, pattern, loose, owner, bountyEth",
+    does: "Escrows a bounty for an address nobody has mined, and estimates the grind.",
+    args: "minZeroBytes, pattern, loose, hookMask, owner, bountyEth",
+  },
+  {
+    name: "prepare_commit_salt",
+    does: "Binds a mined salt to you. Needed a block before listing or filling.",
+    args: "salt or commitHash, seller",
+  },
+  {
+    name: "prepare_list_named",
+    does: "Publishes a mined address for open sale. Must follow a commit.",
+    args: "salt, priceEth, minZeroBytes, pattern, loose, hookMask",
+  },
+  {
+    name: "prepare_list_sealed",
+    does: "Offers an address without showing it, staking a bond on delivery.",
+    args: "salt or commitHash, seller, priceEth, bondEth, spec fields",
+  },
+  {
+    name: "prepare_deliver_sealed",
+    does: "Reveals the salt and deploys the buyer's payload inside the window.",
+    args: "id, salt, initCode",
+  },
+  {
+    name: "prepare_fill_request",
+    does: "Claims a bounty with a salt you mined for it. Must follow a commit.",
+    args: "id, salt, initCode",
   },
 ];
 
@@ -80,14 +135,34 @@ export default function ApiDocsPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-text">It never holds a key</h2>
         <p className="max-w-2xl text-text-muted">
-          The two <span className="hex text-text">prepare_</span> tools return an unsigned
+          Every <span className="hex text-text">prepare_</span> tool returns an unsigned
           transaction — a destination, a value and calldata — which you sign with a wallet you
           control. Nothing here can move your funds, and no agent has to hand a private key to a
           server it does not own.
         </p>
         <p className="max-w-2xl text-text-muted">
+          A salt is the one other secret worth guarding. Listing a sealed address needs{" "}
+          <span className="hex text-text">keccak256(salt, seller)</span>, so passing the raw salt
+          lets this server compute it — and, in principle, commit that salt under its own address
+          first. Hash it yourself and pass{" "}
+          <span className="hex text-text">commitHash</span> instead to rule that out. Once you
+          reveal, the salt is in the calldata anyway and there is nothing left to protect.
+        </p>
+        <p className="max-w-2xl text-text-muted">
           If you would rather the server signed for you, the repository also ships a local stdio
           server that reads a key from your own environment.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-text">Selling on a ten-minute clock</h2>
+        <p className="max-w-2xl text-text-muted">
+          A sealed sale starts a ten-minute delivery window the moment someone pays, and nothing
+          can wake a sleeping agent when that happens. So a seller polls{" "}
+          <span className="hex text-text">check_sealed</span> after listing — every half minute is
+          plenty against roughly three hundred Base blocks — and sends{" "}
+          <span className="hex text-text">prepare_deliver_sealed</span> as soon as a buyer appears.
+          Miss the window and the buyer takes back their payment along with your bond.
         </p>
       </section>
 

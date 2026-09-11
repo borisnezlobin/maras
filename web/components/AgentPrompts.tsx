@@ -68,15 +68,43 @@ Ask me what the address should look like, then call prepare_request with those s
 
 Turn loose matching on if the pattern has letters with lookalikes, since accepting caf3 alongside cafe shortens the grind and makes a miner more likely to take the job. My contract is bound by hash, so nobody can deploy their own at the qualifying address and collect.`,
     },
+    {
+      label: "Buy an address without being shown it first",
+      body: `Use the Maras MCP server at https://marasmarket.vercel.app/api/mcp (Base Sepolia, ${market}).
+
+Call search_sealed to see what is on offer. Each one promises a shape — so many leading zero bytes, maybe a word — without showing the address, and the seller stakes a bond against revealing it.
+
+Weigh the bond against the price: a seller risking less than they charge has little reason to follow through. When one looks worth it, call prepare_buy_sealed with that id and owner set to my wallet address, then sign and send.
+
+They then have ten minutes. Poll check_sealed until it says the address was delivered, and tell me what I got. If the window closes without delivery, call prepare_timeout_sealed and send it — that returns my payment and pays me their bond.`,
+    },
+    {
+      label: "Sell an address nobody can see",
+      body: `${base}
+
+Sealed selling needs a salt, and finding one needs your GPU, so this runs from the repo rather than the MCP server.
+
+  SEALED_ZERO_BYTES=2 SEALED_PRICE_ETH=0.002 SEALED_BOND_ETH=0.002 npx hardhat run scripts/list-sealed.ts --network baseSepolia
+
+That mines an address, publishes only a commitment to it, and stakes the bond. Nothing about the address reaches the chain, so a buyer pays before seeing it. Print the listing id it gives you.
+
+Then start the watcher and leave it running, because a buyer starts a ten-minute clock and nothing will wake you when they do:
+
+  SEALED_ID=<the id> npx hardhat run scripts/deliver-sealed.ts --network baseSepolia
+
+It waits for a buyer, rebuilds the payload they bound by hash, and deploys it at the mined address. Deliver and you collect the price and your bond back; miss the window and the buyer takes both. Tell me which address you sold and for how much.`,
+    },
   ];
 }
 
 function mcpPrompt(): string {
-  return `Install the Maras MCP server so you can shop for contract addresses for me.
+  return `Install the Maras MCP server so you can trade contract addresses for me.
 
 Add a remote MCP server named "maras" pointing at https://marasmarket.vercel.app/api/mcp — nothing to clone or install.
 
-It gives you search_addresses to browse what is for sale, and prepare_buy and prepare_request, which hand back unsigned transactions on Base Sepolia for you to sign with a wallet you control. The server never holds a key, including yours.
+To look around it gives you search_addresses, search_sealed, search_requests, check_sealed and estimate_mining. To spend money it gives you prepare_buy, prepare_buy_sealed, prepare_timeout_sealed and prepare_request. To sell, prepare_commit_salt, prepare_list_named, prepare_list_sealed, prepare_deliver_sealed and prepare_fill_request.
+
+Every prepare_ tool hands back an unsigned transaction on Base Sepolia for you to sign with a wallet you control. The server never holds a key, including yours.
 
 Once it is connected, call search_addresses and tell me what is for sale.`;
 }
