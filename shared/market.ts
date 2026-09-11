@@ -31,8 +31,17 @@ export type PatternTuple = readonly [
   Hex, Hex, Hex, Hex, Hex, Hex, Hex, Hex,
 ];
 
+/**
+ * Each slot is `bytes4`, so a shorter pattern is left-padded to four bytes. That also
+ * right-aligns the value in the uint32 the contract masks against.
+ */
 export function padPatterns(patterns: readonly Hex[]): PatternTuple {
-  const at = (index: number): Hex => patterns[index] ?? NO_PATTERN;
+  const at = (index: number): Hex => {
+    const pattern = patterns[index];
+    if (pattern === undefined) return NO_PATTERN;
+    return `0x${pattern.replace(/^0x/, "").padStart(8, "0")}` as Hex;
+  };
+
   return [
     at(0), at(1), at(2), at(3), at(4), at(5), at(6), at(7),
     at(8), at(9), at(10), at(11), at(12), at(13), at(14), at(15),

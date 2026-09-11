@@ -21,6 +21,12 @@
   --ink-70: #4a4246;
   --ink-90: #1d181b;
 
+  /* True neutrals, so anything inert reads as inert instead of as a pink control. */
+  --grey-05: #f6f6f7;
+  --grey-10: #ededef;
+  --grey-20: #e0e0e3;
+  --grey-30: #cfcfd4;
+
   --surface: var(--rose-05);
   --surface-raised: var(--white);
   --surface-sunken: var(--rose-10);
@@ -42,9 +48,16 @@
   --control: var(--ink-90);
   --control-hover: var(--ink-70);
 
-  --tile-plain: var(--rose-20);
-  --tile-zero: var(--rose-05);
-  --tile-zero-edge: var(--rose-30);
+  --inert: var(--grey-05);
+  --inert-raised: var(--grey-10);
+  --inert-edge: var(--grey-20);
+  --inert-hover: var(--grey-20);
+
+  /* An empty well has to read as empty against a filled byte, or the rarity being sold is
+     invisible. The two need real separation, not two shades of the same pink. */
+  --tile-plain: #b9b3b6;
+  --tile-zero: #ffffff;
+  --tile-zero-edge: #d8d2d5;
   --tile-pattern: var(--rose-50);
 
   --radius-card: 0.875rem;
@@ -75,6 +88,11 @@
 
   --color-control: var(--control);
   --color-control-hover: var(--control-hover);
+
+  --color-inert: var(--inert);
+  --color-inert-raised: var(--inert-raised);
+  --color-inert-edge: var(--inert-edge);
+  --color-inert-hover: var(--inert-hover);
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;

@@ -20,16 +20,20 @@ interface Listing {
 function ListingCard({
   listing,
   patterns,
+  hooksWanted,
   busy,
   onBuy,
 }: {
   listing: Listing;
   patterns: string[];
+  hooksWanted?: number;
   busy: boolean;
   onBuy: () => void;
 }) {
   const zeros = leadingZeroBytes(listing.predicted);
-  const hooks = hookMask(listing.predicted);
+  // Every address has low bits, so showing them unconditionally labels noise as a feature.
+  // Only a match against the mask the buyer filtered for says anything.
+  const hooks = hooksWanted === undefined ? 0 : hookMask(listing.predicted);
 
   return (
     <Card className="flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-[var(--shadow-lift)]">
@@ -98,6 +102,7 @@ function ListingSlot({
     <ListingCard
       listing={listing}
       patterns={patterns}
+      hooksWanted={hooksOnly ? hookMask(record.predicted) : undefined}
       busy={busy}
       onBuy={() => onBuy(listing)}
     />

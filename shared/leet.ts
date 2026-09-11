@@ -77,11 +77,15 @@ export function expectedAttempts(input: {
   return probability === 0 ? Infinity : 1 / probability;
 }
 
-const GPU_HASHES_PER_SECOND = 600_000_000;
+export const GPU_HASHES_PER_SECOND = 600_000_000;
 
-/** Kept in step with web/lib/leet.ts, which shows the same estimate while a request is built. */
-export function describeEffort(attempts: number): string {
-  const seconds = attempts / GPU_HASHES_PER_SECOND;
+/**
+ * Kept in step with web/lib/leet.ts. The rate is a parameter because the shipped miner runs a
+ * few orders of magnitude slower than a dedicated GPU one, and quoting the wrong machine's
+ * speed makes the estimate worse than none.
+ */
+export function describeEffort(attempts: number, hashesPerSecond = GPU_HASHES_PER_SECOND): string {
+  const seconds = attempts / hashesPerSecond;
   if (seconds < 1) return "under a second";
   if (seconds < 90) return `${trim(seconds)} seconds`;
   if (seconds < 5_400) return `${trim(seconds / 60)} minutes`;
