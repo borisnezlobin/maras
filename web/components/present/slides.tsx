@@ -10,7 +10,7 @@ function Title({ children }: { children: ReactNode }) {
 }
 
 function Lead({ children }: { children: ReactNode }) {
-  return <p className="max-w-2xl text-lg text-text-muted sm:text-xl">{children}</p>;
+  return <p className="max-w-3xl text-xl text-text-muted sm:text-2xl">{children}</p>;
 }
 
 /** The Sacred Valley terraces: stacked evaporation pans stepping down a slope. */
@@ -24,7 +24,12 @@ function TerraceSketch() {
   ];
 
   return (
-    <svg viewBox="0 0 320 230" className="w-full max-w-sm" role="img" aria-label="Salt terraces">
+    <svg
+      viewBox="0 0 320 230"
+      className="w-full max-w-md lg:max-w-xl"
+      role="img"
+      aria-label="Salt terraces"
+    >
       <path
         d="M20 96 L70 28 L128 62 L186 18 L244 66 L300 96 Z"
         fill="none"
@@ -130,11 +135,15 @@ export const SLIDES: Slide[] = [
   {
     id: "title",
     render: () => (
-      <div className="flex flex-col items-center gap-8 text-center">
+      <div className="flex flex-col items-center gap-10 text-center">
         <TerraceSketch />
-        <div className="flex flex-col gap-3">
-          <h1 className="text-6xl font-extrabold tracking-tight text-text sm:text-8xl">Maras</h1>
-          <p className="text-2xl font-semibold text-accent sm:text-3xl">Your perfect address.</p>
+        <div className="flex flex-col gap-4">
+          <h1 className="text-7xl font-extrabold tracking-tight text-text sm:text-8xl lg:text-[10rem] lg:leading-none">
+            Maras
+          </h1>
+          <p className="text-3xl font-semibold text-accent sm:text-4xl lg:text-5xl">
+            Your perfect address.
+          </p>
           <Lead>A marketplace for mined contract addresses.</Lead>
         </div>
       </div>
