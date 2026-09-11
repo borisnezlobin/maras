@@ -10,6 +10,7 @@ import { RequestDialog } from "@/components/RequestDialog";
 import { RequestedAddresses } from "@/components/RequestedAddresses";
 import { SealedListings } from "@/components/SealedListings";
 import { WalletButton } from "@/components/WalletButton";
+import { YourAddresses } from "@/components/YourAddresses";
 import { ZeroBytesSlider } from "@/components/ZeroBytesSlider";
 import { Button, Input } from "@/components/ui";
 import { expandLoose, isPatternShape } from "@/lib/leet";
@@ -117,6 +118,7 @@ export function MarketBrowser({
           </div>
         </div>
 
+        <YourAddresses />
         <RequestedAddresses />
 
         <Market

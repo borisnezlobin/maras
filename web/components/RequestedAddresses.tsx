@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Hourglass } from "@phosphor-icons/react";
+import { Hourglass } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import type { Address, Hex } from "viem";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
@@ -52,17 +52,10 @@ function RequestCard({ id, record }: OwnRequest) {
         )}
       </div>
 
-      {record.filled ? (
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
-          <CheckCircle size={16} weight="fill" />
-          Mined and delivered
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
-          <Hourglass size={16} className="text-text-subtle" />
-          Waiting for a miner
-        </span>
-      )}
+      <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
+        <Hourglass size={16} className="text-text-subtle" />
+        Waiting for a miner
+      </span>
     </Card>
   );
 }
@@ -105,6 +98,8 @@ export function RequestedAddresses() {
       if (entry.status !== "success") return;
       const record = entry.result as unknown as RequestRecord;
       if (record.buyer.toLowerCase() !== account.toLowerCase()) return;
+      // A filled request has become an address, which is listed with the others the buyer owns.
+      if (record.filled) return;
       found.push({ id: BigInt(index), record });
     });
 
