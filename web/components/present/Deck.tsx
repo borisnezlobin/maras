@@ -5,8 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { SLIDES } from "@/components/present/slides";
 
-const TRANSITION_MS = 420;
-
 function useSlideIndex(total: number) {
   const [index, setIndex] = useState(0);
 
@@ -39,29 +37,18 @@ function useSlideIndex(total: number) {
 }
 
 /**
- * The blur and scale are a visual fade only. An earlier version also held the displayed slide
- * in its own state and swapped it on a timer, which left the content one slide behind the
- * index: the dots said three, the screen said two.
+ * Keyed on the index so React remounts it, which lets one CSS animation play on entry. Driving
+ * the fade from state needed a timer to undo itself, and when that undo did not land the slide
+ * stayed invisible — a blank screen is a worse failure than an abrupt cut.
  */
 function Stage({ index }: { index: number }) {
-  const [entering, setEntering] = useState(false);
-
-  useEffect(() => {
-    setEntering(true);
-    const timer = setTimeout(() => setEntering(false), TRANSITION_MS / 2);
-    return () => clearTimeout(timer);
-  }, [index]);
-
-  const shown = index;
-
   return (
     <div
-      className={`flex min-h-0 w-full flex-1 items-center justify-center px-6 py-10 transition-all duration-200 ease-out sm:px-16 ${
-        entering ? "scale-[0.97] opacity-0 blur-md" : "scale-100 opacity-100 blur-0"
-      }`}
+      key={index}
+      className="slide-enter flex min-h-0 w-full flex-1 items-center justify-center px-6 py-10 sm:px-16"
     >
       <div className="flex w-full max-w-6xl items-center justify-center">
-        {SLIDES[shown].render()}
+        {SLIDES[index].render()}
       </div>
     </div>
   );

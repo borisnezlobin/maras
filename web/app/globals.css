@@ -115,6 +115,30 @@ body {
   color: var(--accent-strong);
 }
 
+/* Slides come into focus rather than cutting. Runs once per mount, so it cannot get stuck. */
+@keyframes slide-enter {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.slide-enter {
+  animation: slide-enter 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-enter {
+    animation: none;
+  }
+}
+
 /* Hex is real data, so it gets the mono face and figures that line up in a column. */
 .hex {
   font-family: var(--font-mono), ui-monospace, monospace;
