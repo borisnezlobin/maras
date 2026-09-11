@@ -47,7 +47,7 @@ function statusOf(listing: SealedListing, account: Address | undefined): Status 
 
 function HiddenTiles() {
   return (
-    <div className="flex items-center justify-center bg-surface-sunken py-7">
+    <div className="flex items-center justify-center rounded-t-[var(--radius-card)] bg-surface-sunken py-7">
       <div className="grid grid-cols-5 gap-1">
         {Array.from({ length: 20 }, (_, index) => (
           <div key={index} className="size-[27px] rounded bg-edge-strong/60" />
@@ -130,7 +130,7 @@ function SealedSlot({
   if (listing.settled) return null;
 
   return (
-    <Card className="flex flex-col overflow-hidden p-0">
+    <Card className="flex flex-col p-0">
       <HiddenTiles />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <span className="text-xl font-bold text-text">{formatEth(listing.price)}</span>

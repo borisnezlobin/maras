@@ -54,17 +54,17 @@ The buyer's contract is bound by hash when they post, so you deploy their code r
     },
     {
       label: "Buy me an address",
-      body: `Use the Maras MCP server on Base Sepolia (${market}).
+      body: `Use the Maras MCP server at https://marasmarket.vercel.app/api/mcp (Base Sepolia, ${market}).
 
-Call search_addresses to see what is for sale, then pick the best value for me. More leading zero bytes is rarer and saves gas on every future call, so weigh that against the price. Buy it with buy_address, owner set to my wallet address.
+Call search_addresses to see what is for sale, then pick the best value for me. More leading zero bytes is rarer and saves gas on every future call, so weigh that against the price. Call prepare_buy with that listing id and owner set to my wallet address, then sign and send the transaction it hands back.
 
 Payment and deployment happen in one transaction, so a failed purchase costs only gas. Tell me what you bought, what it cost, and the Basescan link.`,
     },
     {
       label: "Post a bounty for an address nobody has mined",
-      body: `Use the Maras MCP server on Base Sepolia (${market}).
+      body: `Use the Maras MCP server at https://marasmarket.vercel.app/api/mcp (Base Sepolia, ${market}).
 
-Ask me what the address should look like, then call post_request with those settings, owner set to my wallet address, and a bounty you think is enough to interest a miner.
+Ask me what the address should look like, then call prepare_request with those settings, owner set to my wallet address, and a bounty you think is enough to interest a miner. It returns an unsigned transaction and tells you what the grind will cost in rented GPU time; sign and send it.
 
 Turn loose matching on if the pattern has letters with lookalikes, since accepting caf3 alongside cafe shortens the grind and makes a miner more likely to take the job. My contract is bound by hash, so nobody can deploy their own at the qualifying address and collect.`,
     },
@@ -72,12 +72,13 @@ Turn loose matching on if the pattern has letters with lookalikes, since accepti
 }
 
 function mcpPrompt(): string {
-  return `Install the Maras MCP server so you can buy and sell contract addresses for me.
+  return `Install the Maras MCP server so you can shop for contract addresses for me.
 
-1. Clone ${REPO} and run pnpm install.
-2. Add an MCP server named "maras" to your config, running "npx tsx mcp/server.ts" with the working directory set to the folder you just cloned.
-3. It needs one environment variable, BASE_SEPOLIA_PRIVATE_KEY, set to a funded Base Sepolia key. If you do not have one, run npx tsx scripts/new-wallet.ts to generate a wallet and ask me to fund it from a faucet.
-4. Check it works by calling search_addresses, then tell me what is for sale.`;
+Add a remote MCP server named "maras" pointing at https://marasmarket.vercel.app/api/mcp — nothing to clone or install.
+
+It gives you search_addresses to browse what is for sale, and prepare_buy and prepare_request, which hand back unsigned transactions on Base Sepolia for you to sign with a wallet you control. The server never holds a key, including yours.
+
+Once it is connected, call search_addresses and tell me what is for sale.`;
 }
 
 function CopyControl({ text, label }: { text: string; label: string }) {
@@ -105,7 +106,7 @@ export function AgentPrompts() {
 
       <Card className="flex items-center justify-between gap-4 p-4">
         <span className="text-sm text-text">
-          Install the Maras MCP so your agent can use Maras
+          Install the Maras MCP so your agent can use Maras — hosted, nothing to clone
         </span>
         <CopyControl text={mcpPrompt()} label="Copy the prompt that installs the MCP server" />
       </Card>

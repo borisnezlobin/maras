@@ -20,7 +20,7 @@ export function hookMask(address: string): number {
 }
 
 /** Uniswap V4 reads a hook's permissions from these bits of its own address. */
-const HOOK_FLAGS: ReadonlyArray<readonly [number, string]> = [
+export const HOOK_FLAGS: ReadonlyArray<readonly [number, string]> = [
   [13, "beforeInitialize"],
   [12, "afterInitialize"],
   [11, "beforeAddLiquidity"],

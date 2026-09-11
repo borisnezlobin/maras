@@ -7,6 +7,7 @@ import { useAccount, useWriteContract } from "wagmi";
 
 import { ConnectGate } from "@/components/ConnectGate";
 import { Button, Field, Hint, IconButton, Input, TogglePill } from "@/components/ui";
+import { HOOK_FLAGS } from "@/lib/address";
 import {
   describeCost,
   describeEffort,
@@ -20,7 +21,6 @@ import { vaultInitCodeHash } from "@/lib/payload";
 
 const ZERO_CHOICES = [0, 1, 2, 3, 4, 5, 6];
 const ADDRESS_NIBBLES = 40;
-const HOOK_MASK = 0x2400;
 
 function spellingsFor(pattern: string): string[] {
   if (pattern !== "" && !isPatternShape(pattern)) return [];
@@ -31,10 +31,10 @@ function nibblesOf(accepted: string[]): number {
   return accepted[0]?.length ?? 0;
 }
 
-function specFor(zeroBytes: number, hookBits: boolean, accepted: string[]) {
+function specFor(zeroBytes: number, hookMaskValue: number, hookBits: boolean, accepted: string[]) {
   return {
     minZeroBytes: zeroBytes,
-    hookMask: hookBits ? HOOK_MASK : 0,
+    hookMask: hookMaskValue,
     checkHookMask: hookBits,
     patterns: padPatterns(accepted),
     patternCount: accepted.length,
@@ -45,7 +45,7 @@ function specFor(zeroBytes: number, hookBits: boolean, accepted: string[]) {
 function attemptsFor(zeroBytes: number, hookBits: boolean, accepted: string[]): number {
   return expectedAttempts({
     minZeroBytes: zeroBytes,
-    hookMask: hookBits ? HOOK_MASK : undefined,
+    hookMask: hookBits ? 1 : undefined,
     patternNibbles: nibblesOf(accepted),
     variantCount: accepted.length,
   });
@@ -97,6 +97,49 @@ function ZeroBytePills({ value, onChange }: { value: number; onChange: (next: nu
   );
 }
 
+/**
+ * V4 requires the low 14 bits of the address to equal the hook's permission set exactly, so
+ * picking fewer permissions does not make the grind shorter — all fourteen bits are pinned
+ * either way.
+ */
+function HookPicker({
+  flags,
+  onToggle,
+  onClear,
+}: {
+  flags: number[];
+  onToggle: (bit: number) => void;
+  onClear: () => void;
+}) {
+  const enabled = flags.length > 0;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-text">Uniswap V4 hook permissions</span>
+        <Hint text="A V4 hook declares its permissions through the low 14 bits of its own address, so the address has to be mined to match. Picking fewer does not make it easier: all fourteen bits are pinned either way." />
+        {enabled && (
+          <button onClick={onClear} className="ml-auto text-xs text-text-muted hover:text-text">
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {HOOK_FLAGS.map(([bit, name]) => (
+          <TogglePill
+            key={bit}
+            active={flags.includes(bit)}
+            label={`Require ${name}`}
+            onClick={() => onToggle(bit)}
+          >
+            {name}
+          </TogglePill>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SpellingPills({
   spellings,
   dropped,
@@ -134,9 +177,18 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
 
   const [zeroBytes, setZeroBytes] = useState(3);
   const [pattern, setPattern] = useState("");
-  const [hookBits, setHookBits] = useState(false);
+  const [hookFlags, setHookFlags] = useState<number[]>([]);
   const [bountyEth, setBountyEth] = useState("0.01");
   const [dropped, setDropped] = useState<string[]>([]);
+
+  const hookBits = hookFlags.length > 0;
+  const hookMaskValue = hookFlags.reduce((mask, bit) => mask | (1 << bit), 0);
+
+  function toggleFlag(bit: number) {
+    setHookFlags((current) =>
+      current.includes(bit) ? current.filter((item) => item !== bit) : [...current, bit],
+    );
+  }
 
   const allSpellings = useMemo(() => spellingsFor(pattern), [pattern]);
   const accepted = allSpellings.filter((spelling) => !dropped.includes(spelling));
@@ -162,7 +214,10 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
       address: MARAS_ADDRESS as Address,
       abi: marasAbi,
       functionName: "postRequest",
-      args: [specFor(zeroBytes, hookBits, accepted), vaultInitCodeHash(account as Address)],
+      args: [
+        specFor(zeroBytes, hookMaskValue, hookBits, accepted),
+        vaultInitCodeHash(account as Address),
+      ],
       value: parseEther(bountyEth),
     });
   }
@@ -202,15 +257,7 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
           <SpellingPills spellings={allSpellings} dropped={dropped} onToggle={toggle} />
         )}
 
-        <label className="flex cursor-pointer items-center gap-2.5">
-          <input
-            type="checkbox"
-            checked={hookBits}
-            onChange={(event) => setHookBits(event.target.checked)}
-            className="size-4 accent-[var(--accent)]"
-          />
-          <span className="text-sm text-text">Uniswap V4 hook permission bits</span>
-        </label>
+        <HookPicker flags={hookFlags} onToggle={toggleFlag} onClear={() => setHookFlags([])} />
 
         <Field label="Bounty in ETH">
           <Input value={bountyEth} onChange={(event) => setBountyEth(event.target.value)} />
