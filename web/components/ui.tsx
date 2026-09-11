@@ -80,26 +80,36 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 }
 
 /** A pill the reader can switch off, used where each option changes what gets mined. */
+/**
+ * `tone` decides what "off" means. Options that start accepted and get removed read as struck
+ * out; options that start unselected and get added must not, or an untouched picker looks like
+ * a list of things the reader rejected.
+ */
 export function TogglePill({
   active,
   label,
+  tone = "opt-out",
   onClick,
   children,
 }: {
   active: boolean;
   label: string;
+  tone?: "opt-in" | "opt-out";
   onClick: () => void;
   children: ReactNode;
 }) {
+  const inactive =
+    tone === "opt-out"
+      ? "bg-inert text-text-subtle line-through hover:bg-inert-hover hover:text-text-muted"
+      : "bg-inert text-text-muted hover:bg-inert-hover hover:text-text";
+
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
       className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-        active
-          ? "bg-accent text-text-inverse"
-          : "bg-inert text-text-subtle line-through hover:bg-inert-hover hover:text-text-muted"
+        active ? "bg-accent text-text-inverse" : inactive
       }`}
     >
       {children}

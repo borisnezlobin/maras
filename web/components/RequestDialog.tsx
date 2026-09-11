@@ -129,6 +129,7 @@ function HookPicker({
           <TogglePill
             key={bit}
             active={flags.includes(bit)}
+            tone="opt-in"
             label={`Require ${name}`}
             onClick={() => onToggle(bit)}
           >
