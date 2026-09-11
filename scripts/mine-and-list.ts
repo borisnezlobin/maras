@@ -1,7 +1,8 @@
 import { network } from "hardhat";
-import { formatEther, parseEther, type Address, type Hex } from "viem";
+import { parseEventLogs, parseEther, type Address, type Hex } from "viem";
 
 import { mineSalt, expectedAttempts } from "../miner/mine.js";
+import { marasAbi } from "../shared/generated/abi.js";
 import { commitHashFor, marketAddress, onChainSpec } from "../shared/market.js";
 import type { Spec } from "../shared/create3.js";
 
@@ -52,9 +53,18 @@ const listTx = await maras.write.listNamed([
   parseEther(priceEth),
   onChainSpec(spec),
 ]);
-await publicClient.waitForTransactionReceipt({ hash: listTx });
+const listReceipt = await publicClient.waitForTransactionReceipt({ hash: listTx });
+if (listReceipt.status !== "success") {
+  throw new Error(`listNamed reverted in block ${listReceipt.blockNumber}`);
+}
 
-const count = await maras.read.namedListingCount();
-console.log(`Listed #${count - 1n} at ${formatEther(parseEther(priceEth))} ETH`);
+// Read the id from the event rather than the counter: a public RPC can serve the follow-up
+// read from a node that has not caught up yet, which reports a stale count.
+const [listed] = parseEventLogs({
+  abi: marasAbi,
+  eventName: "NamedListed",
+  logs: listReceipt.logs,
+});
+console.log(`Listed #${listed.args.id} at ${priceEth} ETH`);
 console.log(`Address  https://sepolia.basescan.org/address/${mined.address}`);
 console.log(`Listing  https://sepolia.basescan.org/tx/${listTx}`);
