@@ -1,6 +1,8 @@
 import { ArrowSquareOut, Lock, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 
 import { Market } from "@/components/Market";
+import { RequestForm } from "@/components/RequestForm";
+import { SealedListings } from "@/components/SealedListings";
 import { WalletButton } from "@/components/WalletButton";
 import { Card } from "@/components/ui";
 import { MARAS_ADDRESS } from "@/lib/maras.generated";
@@ -131,6 +133,8 @@ export default function Page() {
           <h2 className="text-lg font-medium text-text">Addresses for sale</h2>
           <Market />
         </section>
+        <SealedListings />
+        <RequestForm />
         <Protections />
       </main>
       <Footer />

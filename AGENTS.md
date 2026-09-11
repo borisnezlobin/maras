@@ -50,9 +50,12 @@ npx hardhat run scripts/deploy.ts --network baseSepolia
 
 ## Network
 
-`baseSepolia` (chainId 84532, OP stack). Config variables `BASE_SEPOLIA_RPC_URL` and
-`BASE_SEPOLIA_PRIVATE_KEY`, set via `npx hardhat keystore set <NAME>` or as environment variables.
-Never commit a private key; `.env` is gitignored and `.env.example` shows the shape.
+`baseSepolia` (chainId 84532, OP stack). The RPC URL defaults to the public
+`https://sepolia.base.org` and can be overridden with a `BASE_SEPOLIA_RPC_URL` environment
+variable — it is not a secret, so it does not belong in the keystore.
+
+The private key is the only secret: `npx hardhat keystore set BASE_SEPOLIA_PRIVATE_KEY`. Never
+commit it; `.env` is gitignored and `.env.example` shows the shape.
 
 ## Docs
 

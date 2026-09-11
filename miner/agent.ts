@@ -70,7 +70,13 @@ async function mineAndList(spec: Spec, priceWei: bigint) {
   console.log(`  ${explorerUrl(mined.address)}`);
 }
 
-type RequestTuple = [Address, bigint, OnChainSpec, Hex, boolean];
+interface RequestRecord {
+  buyer: Address;
+  bounty: bigint;
+  spec: OnChainSpec;
+  initCodeHash: Hex;
+  filled: boolean;
+}
 
 async function fillOpenRequests() {
   const market = marketAddress();
@@ -83,12 +89,12 @@ async function fillOpenRequests() {
   })) as bigint;
 
   for (let id = 0n; id < count; id++) {
-    const [buyer, bounty, spec, initCodeHash, filled] = (await publicClient.readContract({
+    const { buyer, bounty, spec, initCodeHash, filled } = (await publicClient.readContract({
       address: market,
       abi: marasAbi,
-      functionName: "requests",
+      functionName: "getRequest",
       args: [id],
-    })) as unknown as RequestTuple;
+    })) as unknown as RequestRecord;
 
     if (filled) continue;
 
