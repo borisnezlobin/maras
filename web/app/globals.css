@@ -1,56 +1,57 @@
 @import "tailwindcss";
 
 /*
- * A marketplace ground: cool light grey behind, white cards on top, one hot accent.
- * Every colour in the app resolves through a semantic token defined here.
+ * Salt-pan pink. The ground carries a wash of it, the accent is the saturated version, and
+ * near-black is demoted to secondary controls.
  */
 :root {
   color-scheme: light;
 
-  --grey-00: #ffffff;
-  --grey-05: #f4f5f7;
-  --grey-10: #e9ebef;
-  --grey-20: #dcdfe4;
-  --grey-40: #9aa1ad;
-  --grey-60: #5d6570;
-  --grey-80: #2f353d;
-  --grey-95: #14181d;
+  --white: #ffffff;
+  --rose-05: #fdf5f8;
+  --rose-10: #fbe9f0;
+  --rose-20: #f6d3e0;
+  --rose-30: #eeaec6;
+  --rose-50: #d81e63;
+  --rose-60: #c01a57;
+  --rose-70: #9c1546;
 
-  --rose-10: #ffe9ee;
-  --rose-30: #ffc2d1;
-  --rose-50: #e6446f;
-  --rose-70: #b32a51;
+  --ink-30: #b3aeb1;
+  --ink-50: #7b7377;
+  --ink-70: #4a4246;
+  --ink-90: #1d181b;
 
-  --surface: var(--grey-05);
-  --surface-raised: var(--grey-00);
-  --surface-sunken: var(--grey-10);
+  --surface: var(--rose-05);
+  --surface-raised: var(--white);
+  --surface-sunken: var(--rose-10);
 
-  --text: var(--grey-95);
-  --text-muted: var(--grey-60);
-  --text-subtle: var(--grey-40);
-  --text-inverse: var(--grey-00);
+  --text: var(--ink-90);
+  --text-muted: var(--ink-50);
+  --text-subtle: var(--ink-30);
+  --text-inverse: var(--white);
 
-  --edge: var(--grey-10);
-  --edge-strong: var(--grey-20);
+  --edge: var(--rose-10);
+  --edge-strong: var(--rose-20);
 
   --accent: var(--rose-50);
+  --accent-hover: var(--rose-60);
   --accent-strong: var(--rose-70);
   --accent-soft: var(--rose-10);
   --accent-edge: var(--rose-30);
 
-  --control: var(--grey-95);
-  --control-hover: var(--grey-80);
+  --control: var(--ink-90);
+  --control-hover: var(--ink-70);
 
-  --tile-plain: var(--grey-20);
-  --tile-zero: var(--grey-05);
-  --tile-zero-edge: var(--grey-20);
+  --tile-plain: var(--rose-20);
+  --tile-zero: var(--rose-05);
+  --tile-zero-edge: var(--rose-30);
   --tile-pattern: var(--rose-50);
 
   --radius-card: 0.875rem;
   --radius-control: 0.5rem;
 
-  --shadow-card: 0 1px 2px rgb(20 24 29 / 0.06), 0 1px 3px rgb(20 24 29 / 0.08);
-  --shadow-lift: 0 4px 12px rgb(20 24 29 / 0.1), 0 12px 28px -16px rgb(20 24 29 / 0.22);
+  --shadow-card: 0 1px 2px rgb(29 24 27 / 0.05), 0 1px 3px rgb(29 24 27 / 0.07);
+  --shadow-lift: 0 4px 12px rgb(29 24 27 / 0.09), 0 12px 28px -16px rgb(29 24 27 / 0.2);
 }
 
 @theme inline {
@@ -67,6 +68,7 @@
   --color-edge-strong: var(--edge-strong);
 
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-accent-edge: var(--accent-edge);

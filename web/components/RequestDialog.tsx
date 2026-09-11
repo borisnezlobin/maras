@@ -1,70 +1,48 @@
 "use client";
 
-import { Coins, X } from "@phosphor-icons/react";
-import { useState } from "react";
-import { parseEther, type Address, type Hex } from "viem";
+import { X } from "@phosphor-icons/react";
+import { useMemo, useState } from "react";
+import { parseEther, type Address } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 
 import { ConnectGate } from "@/components/ConnectGate";
-import { Button, Field, Input } from "@/components/ui";
-import {
-  describeEffort,
-  expandLoose,
-  expectedAttempts,
-  hasLookalikes,
-  isPatternShape,
-  padPatterns,
-} from "@/lib/leet";
+import { Button, Field, Hint, IconButton, Input, TogglePill } from "@/components/ui";
+import { describeEffort, expandLoose, expectedAttempts, isPatternShape, padPatterns } from "@/lib/leet";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { vaultInitCodeHash } from "@/lib/payload";
 
 const ZERO_CHOICES = [0, 1, 2, 3, 4, 5, 6];
+const ADDRESS_NIBBLES = 40;
+const HOOK_MASK = 0x2400;
 
-interface Draft {
-  minZeroBytes: number;
-  pattern: string;
-  loose: boolean;
-  hookBits: boolean;
-  bountyEth: string;
+function spellingsFor(pattern: string): string[] {
+  if (pattern !== "" && !isPatternShape(pattern)) return [];
+  return expandLoose(pattern, true);
 }
 
-const EMPTY: Draft = {
-  minZeroBytes: 3,
-  pattern: "",
-  loose: true,
-  hookBits: false,
-  bountyEth: "0.01",
-};
-
-function variantsOf(draft: Draft): string[] {
-  return isPatternShape(draft.pattern) ? expandLoose(draft.pattern, draft.loose) : [];
+function nibblesOf(accepted: string[]): number {
+  return accepted[0]?.length ?? 0;
 }
 
-/** What the address will look like: zero wells, then the pattern floating somewhere after. */
-function Preview({ draft, variants }: { draft: Draft; variants: string[] }) {
-  const zeros = "00".repeat(draft.minZeroBytes);
-  const shown = variants[0] ?? "";
-  const tail = 40 - zeros.length - shown.length;
+function specFor(zeroBytes: number, hookBits: boolean, accepted: string[]) {
+  return {
+    minZeroBytes: zeroBytes,
+    hookMask: hookBits ? HOOK_MASK : 0,
+    checkHookMask: hookBits,
+    patterns: padPatterns(accepted),
+    patternCount: accepted.length,
+    patternNibbles: nibblesOf(accepted),
+  };
+}
 
-  return (
-    <div className="flex flex-col gap-1.5 rounded-[var(--radius-control)] bg-surface-sunken p-3">
-      <span className="hex flex w-full items-baseline overflow-hidden text-sm whitespace-nowrap">
-        <span className="shrink-0 text-text-subtle">0x{zeros}</span>
-        <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
-          {"·".repeat(Math.max(0, Math.floor(tail / 2)))}
-        </span>
-        <span className="shrink-0 font-medium text-accent-strong">{shown}</span>
-        <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
-          {"·".repeat(Math.max(0, Math.ceil(tail / 2)))}
-        </span>
-      </span>
-      {variants.length > 1 && (
-        <span className="text-xs text-text-muted">
-          {variants.length} spellings accepted: {variants.slice(0, 6).join(", ")}
-          {variants.length > 6 ? "…" : ""}
-        </span>
-      )}
-    </div>
+function effortFor(zeroBytes: number, hookBits: boolean, accepted: string[]): string {
+  return describeEffort(
+    expectedAttempts({
+      minZeroBytes: zeroBytes,
+      hookMask: hookBits ? HOOK_MASK : undefined,
+      patternNibbles: nibblesOf(accepted),
+      variantCount: accepted.length,
+    }),
   );
 }
 
@@ -73,123 +51,171 @@ function bountyIsValid(value: string): boolean {
   return value !== "" && Number.isFinite(parsed) && parsed > 0;
 }
 
+function Preview({ zeroBytes, spelling }: { zeroBytes: number; spelling: string }) {
+  const zeros = "0".repeat(zeroBytes * 2);
+  const fill = Math.max(0, ADDRESS_NIBBLES - zeros.length - spelling.length);
+
+  return (
+    <div className="hex flex w-full items-baseline overflow-hidden rounded-[var(--radius-control)] bg-surface-sunken px-3 py-2.5 text-sm whitespace-nowrap">
+      <span className="shrink-0 text-text-subtle">0x{zeros}</span>
+      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
+        {"·".repeat(Math.floor(fill / 2))}
+      </span>
+      <span className="shrink-0 font-medium text-accent">{spelling}</span>
+      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
+        {"·".repeat(Math.ceil(fill / 2))}
+      </span>
+    </div>
+  );
+}
+
+function ZeroBytePills({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {ZERO_CHOICES.map((choice) => (
+        <button
+          key={choice}
+          onClick={() => onChange(choice)}
+          aria-pressed={choice === value}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+            choice === value
+              ? "bg-accent text-text-inverse"
+              : "bg-surface-sunken text-text-muted hover:bg-edge-strong"
+          }`}
+        >
+          {choice === 0 ? "None" : choice}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SpellingPills({
+  spellings,
+  dropped,
+  onToggle,
+}: {
+  spellings: string[];
+  dropped: string[];
+  onToggle: (spelling: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-text">Spellings you accept</span>
+        <Hint text="A 3 can stand in for an e, a 4 for an a. Every extra spelling shortens the grind. Switch one off and it stops counting." />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {spellings.map((spelling) => (
+          <TogglePill
+            key={spelling}
+            active={!dropped.includes(spelling)}
+            onClick={() => onToggle(spelling)}
+          >
+            <span className="hex">{spelling}</span>
+          </TogglePill>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RequestDialog({ onClose }: { onClose: () => void }) {
   const { address: account } = useAccount();
   const { writeContract, isPending } = useWriteContract();
-  const [draft, setDraft] = useState<Draft>(EMPTY);
 
-  const patternOk = draft.pattern === "" || isPatternShape(draft.pattern);
-  const variants = variantsOf(draft);
-  const attempts = expectedAttempts({
-    minZeroBytes: draft.minZeroBytes,
-    hookMask: draft.hookBits ? 0x2400 : undefined,
-    patternNibbles: variants[0]?.length ?? 0,
-    variantCount: variants.length,
-  });
+  const [zeroBytes, setZeroBytes] = useState(3);
+  const [pattern, setPattern] = useState("");
+  const [hookBits, setHookBits] = useState(false);
+  const [bountyEth, setBountyEth] = useState("0.01");
+  const [dropped, setDropped] = useState<string[]>([]);
 
-  const ready = patternOk && bountyIsValid(draft.bountyEth) && !isPending;
+  const allSpellings = useMemo(() => spellingsFor(pattern), [pattern]);
+  const accepted = allSpellings.filter((spelling) => !dropped.includes(spelling));
+  const patternOk = pattern === "" || isPatternShape(pattern);
+  const ready = patternOk && bountyIsValid(bountyEth) && !isPending;
+
+  function toggle(spelling: string) {
+    setDropped((current) =>
+      current.includes(spelling)
+        ? current.filter((item) => item !== spelling)
+        : [...current, spelling],
+    );
+  }
+
+  function changePattern(next: string) {
+    setPattern(next.trim());
+    setDropped([]);
+  }
 
   function submit() {
     writeContract({
       address: MARAS_ADDRESS as Address,
       abi: marasAbi,
       functionName: "postRequest",
-      args: [
-        {
-          minZeroBytes: draft.minZeroBytes,
-          hookMask: draft.hookBits ? 0x2400 : 0,
-          checkHookMask: draft.hookBits,
-          patterns: padPatterns(variants),
-          patternCount: variants.length,
-          patternNibbles: variants[0]?.length ?? 0,
-        },
-        vaultInitCodeHash(account as Address),
-      ],
-      value: parseEther(draft.bountyEth),
+      args: [specFor(zeroBytes, hookBits, accepted), vaultInitCodeHash(account as Address)],
+      value: parseEther(bountyEth),
     });
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-text/40 p-4 sm:items-center">
       <div className="flex w-full max-w-lg flex-col gap-5 rounded-[var(--radius-card)] bg-surface-raised p-5 shadow-[var(--shadow-lift)]">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-text">Request an address</h2>
-            <span className="text-sm text-text-muted">Miners race to find it. You pay on delivery.</span>
+            <Hint text="Miners compete to find it. Your bounty is escrowed and only pays out when a matching address is delivered." />
           </div>
-          <button onClick={onClose} className="rounded-full p-1 text-text-subtle hover:bg-surface-sunken hover:text-text">
+          <IconButton label="Close" onClick={onClose}>
             <X size={18} />
-          </button>
+          </IconButton>
         </div>
 
-        <Preview draft={draft} variants={variants} />
+        <Preview zeroBytes={zeroBytes} spelling={accepted[0] ?? ""} />
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-text">Leading zeros</span>
-          <div className="flex flex-wrap gap-1.5">
-            {ZERO_CHOICES.map((value) => (
-              <button
-                key={value}
-                onClick={() => setDraft({ ...draft, minZeroBytes: value })}
-                className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-                  draft.minZeroBytes === value
-                    ? "bg-control text-text-inverse"
-                    : "bg-surface-sunken text-text-muted hover:bg-edge-strong"
-                }`}
-              >
-                {value === 0 ? "None" : value}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-text">Zero bytes in front</span>
+            <Hint text="A byte is two hex characters, so 2 bytes means the address starts 0x0000." />
           </div>
+          <ZeroBytePills value={zeroBytes} onChange={setZeroBytes} />
         </div>
 
         <Field label="Must contain">
           <Input
-            value={draft.pattern}
-            placeholder="cafe, deadbee, b0b…"
-            onChange={(event) => setDraft({ ...draft, pattern: event.target.value.trim() })}
+            value={pattern}
+            placeholder="cafe, deadbeef, b0b…"
+            onChange={(event) => changePattern(event.target.value)}
           />
         </Field>
 
-        {hasLookalikes(draft.pattern) && (
-          <label className="flex cursor-pointer items-center gap-2.5">
-            <input
-              type="checkbox"
-              checked={draft.loose}
-              onChange={(event) => setDraft({ ...draft, loose: event.target.checked })}
-              className="size-4 accent-[var(--accent)]"
-            />
-            <span className="text-sm text-text">
-              Accept lookalikes, so a 3 counts as an e and a 4 as an a
-            </span>
-          </label>
+        {allSpellings.length > 1 && (
+          <SpellingPills spellings={allSpellings} dropped={dropped} onToggle={toggle} />
         )}
 
         <label className="flex cursor-pointer items-center gap-2.5">
           <input
             type="checkbox"
-            checked={draft.hookBits}
-            onChange={(event) => setDraft({ ...draft, hookBits: event.target.checked })}
+            checked={hookBits}
+            onChange={(event) => setHookBits(event.target.checked)}
             className="size-4 accent-[var(--accent)]"
           />
           <span className="text-sm text-text">Uniswap V4 hook permission bits</span>
         </label>
 
         <Field label="Bounty in ETH">
-          <Input
-            value={draft.bountyEth}
-            onChange={(event) => setDraft({ ...draft, bountyEth: event.target.value })}
-          />
+          <Input value={bountyEth} onChange={(event) => setBountyEth(event.target.value)} />
         </Field>
 
         <div className="flex items-center justify-between gap-4 border-t border-edge pt-4">
           <div className="flex flex-col">
             <span className="text-xs text-text-subtle">Mining time</span>
-            <span className="text-sm font-semibold text-text">{describeEffort(attempts)}</span>
+            <span className="text-sm font-semibold text-text">
+              {effortFor(zeroBytes, hookBits, accepted)}
+            </span>
           </div>
           <ConnectGate>
             <Button onClick={submit} disabled={!ready}>
-              <Coins size={16} />
               Post bounty
             </Button>
           </ConnectGate>

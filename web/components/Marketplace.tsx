@@ -4,7 +4,6 @@ import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { AgentPrompts } from "@/components/AgentPrompts";
-import { ConnectGate } from "@/components/ConnectGate";
 import { Market } from "@/components/Market";
 import { RequestDialog } from "@/components/RequestDialog";
 import { SealedListings } from "@/components/SealedListings";
@@ -13,6 +12,30 @@ import { Button, Input } from "@/components/ui";
 import { expandLoose, isPatternShape } from "@/lib/leet";
 
 const ZERO_CHOICES = [0, 1, 2, 3, 4];
+
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+        active
+          ? "bg-accent text-text-inverse"
+          : "bg-surface-raised text-text-muted hover:bg-surface-sunken"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function Marketplace() {
   const [minZeroBytes, setMinZeroBytes] = useState(0);
@@ -24,64 +47,52 @@ export function Marketplace() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-edge bg-surface-raised px-4 py-3 sm:px-6 lg:px-10">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-edge bg-surface-raised px-4 py-3 sm:px-6 lg:px-10">
         <span className="text-lg font-extrabold tracking-tight text-text">Maras</span>
-
-        <div className="relative order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-sm">
-          <MagnifyingGlass
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-subtle"
-          />
-          <Input
-            value={search}
-            placeholder="Search for cafe, b0b, deadbee…"
-            onChange={(event) => setSearch(event.target.value.trim())}
-            className="w-full pl-9"
-          />
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setRequesting(true)}>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setRequesting(true)}>
             <Plus size={16} />
-            <span className="hidden sm:inline">Request one</span>
+            <span className="hidden sm:inline">Request an address</span>
           </Button>
           <WalletButton />
         </div>
       </header>
 
-      <div className="flex flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-sm text-text-muted">Leading zeros</span>
+      <div className="flex min-h-[calc(100vh-61px)] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <MagnifyingGlass
+              size={16}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-subtle"
+            />
+            <Input
+              value={search}
+              placeholder="cafe, b0b, deadbeef…"
+              onChange={(event) => setSearch(event.target.value.trim())}
+              className="w-full pl-9"
+            />
+          </div>
+
           {ZERO_CHOICES.map((value) => (
-            <button
+            <FilterPill
               key={value}
+              active={minZeroBytes === value}
               onClick={() => setMinZeroBytes(value)}
-              className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-                minZeroBytes === value
-                  ? "bg-control text-text-inverse"
-                  : "bg-surface-raised text-text-muted hover:bg-surface-sunken"
-              }`}
             >
-              {value === 0 ? "Any" : `${value}+`}
-            </button>
+              {value === 0 ? "Any" : `${value}+ zero bytes`}
+            </FilterPill>
           ))}
 
-          <span className="mx-2 h-5 w-px bg-edge-strong" />
-
-          <button
-            onClick={() => setHooksOnly(!hooksOnly)}
-            className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-              hooksOnly
-                ? "bg-control text-text-inverse"
-                : "bg-surface-raised text-text-muted hover:bg-surface-sunken"
-            }`}
-          >
+          <FilterPill active={hooksOnly} onClick={() => setHooksOnly(!hooksOnly)}>
             Uniswap V4 hooks
-          </button>
+          </FilterPill>
         </div>
 
         <Market minZeroBytes={minZeroBytes} patterns={patterns} hooksOnly={hooksOnly} />
         <SealedListings />
+      </div>
+
+      <div className="px-4 pb-10 sm:px-6 lg:px-10">
         <AgentPrompts />
       </div>
 
