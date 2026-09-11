@@ -3,7 +3,7 @@
 import { CheckCircle, X } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { parseEther, type Address, type Hex } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount } from "wagmi";
 
 import { ConnectGate } from "@/components/ConnectGate";
 import { HookPicker } from "@/components/HookPicker";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/leet";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { payloadInitCodeHash } from "@/lib/payload";
+import { useTransaction } from "@/lib/useTransaction";
 
 const ZERO_CHOICES = [0, 1, 2, 3, 4, 5, 6];
 const ADDRESS_NIBBLES = 40;
@@ -307,8 +308,7 @@ function RequestForm({
 
 export function RequestDialog({ onClose }: { onClose: () => void }) {
   const { address: account } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: confirming, isSuccess: confirmed } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, state } = useTransaction();
 
   function submit(spec: PostedSpec, bountyEth: string) {
     writeContract({
@@ -323,15 +323,18 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-text/40 p-4 sm:items-center">
       <div className="flex w-full max-w-lg flex-col rounded-[var(--radius-card)] bg-surface-raised shadow-[var(--shadow-lift)]">
-        {confirmed && hash !== undefined ? (
-          <Posted hash={hash} onClose={onClose} />
+        {state.confirmed && state.hash !== undefined ? (
+          <Posted hash={state.hash} onClose={onClose} />
         ) : (
           <RequestForm
             onClose={onClose}
             onSubmit={submit}
-            isPending={isPending}
-            confirming={confirming}
+            isPending={state.signing}
+            confirming={state.confirming}
           />
+        )}
+        {state.message !== null && !state.confirmed && (
+          <p className="px-5 pb-5 text-sm text-accent-strong">{state.message}</p>
         )}
       </div>
     </div>

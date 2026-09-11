@@ -5,8 +5,7 @@ Your perfect address.
 Maras is a salt marketplace for mined contract addresses on Base Sepolia. Miners grind CREATE3 salts until one
 produces a rare address, list it, and profit when buyers purchase the contract address.
 
-Named for the salt terraces at Maras in Peru, where pink salt is harvested and sold to global markets.
-Miners here harvest salts too!
+5 min read.
 
 **App:** [marasmarket.vercel.app](https://marasmarket.vercel.app)
 
@@ -14,7 +13,7 @@ Miners here harvest salts too!
 
 **Contract:** [`0x7883a2913e1adee4e16860118218992f1cd36e02`](https://sepolia.basescan.org/address/0x7883a2913e1adee4e16860118218992f1cd36e02) on Base Sepolia, from block 46677670
 
-## Why salts
+## Why Salt
 
 Building a market in information an agent cannot inspect before paying runs into Arrow's information paradox: To prove information is worth buying, you have to show
 it, and showing it gives it away.
@@ -25,25 +24,25 @@ sampleable data: you can check a random slice of a dataset before paying for the
 I believe that what is left is either many small, fresh things (like frequent measurements behind an API—cheap, but high-volume), or a few valuable private
 things (like insider information, personal intent, or things like classified blueprints—expensive, but low-volume).
 
-An obvious issue with the latter group is that it's hard, if not impossible, to verify the information is correct pre-purchase. This means architecting dispute resolution, reputation tracking, and escrows, and then there's the issue of: who would even sell? If you have insider information and willing to break the law, just trade off of it. (Polymarket, anyone?)
+An obvious issue with the latter group is that it's hard, if not impossible, to verify the information is correct pre-purchase. This means architecting dispute resolution, reputation tracking, and escrows, and then there's the issue of: who would even sell? If you have insider information and willing to break the law, just trade it, don't sell it. (Polymarket, anyone?)
 
-The blockchain, though, is uniquely well-suited to trade information that is _far cheaper to verify than to produce_. It's how the blockchain stays immutable!
+The blockchain, though, is uniquely well-suited to trade information that is _far cheaper to verify than to produce_. Many items in the first group fall into that category.
 
 So, a CREATE3 salt makes for a perfect market: Finding a salt whose address starts with five zero bytes takes about 2⁴⁰ hashes, and checking one
-takes two. Buyers for these addresses already exist (below), yet nobody sells them—because they have nowhere to sell them. (Everyone runs their own miner and throws away every rare address that isn't the one they were searching for. Why not profit off of the unused rare ones?)
+takes two. Buyers for these addresses already exist (below), yet nobody sells them—because they have nowhere to sell them. That's what Maras is for!
 
-A salt also nicely fits Arrow's: showing the salt gives it away (the buyer could deploy with it and never pay). And a seller who put it in a transaction could
+A salt also nicely fits Arrow's paradox: showing the salt gives it away (the buyer could deploy with it and never pay). And a seller who put it in a transaction could
 be front-run by anyone watching the mempool. But: salts being hard to produce, yet easy to verify, means that **the information can be _verified_—just not inspected—by the buyer before payment.**
 
-Maras makes this exchanging possible. A salt produces its address only when this contract deploys it, and the contract deploys only against payment, so a named listing (described  below) can show its salt openly. A commit one block before the reveal handles the mempool. Bounties and sealed listings, on the other hand, keep the salt hidden until payment.
+Maras makes this exchanging possible. A salt produces its address only when _this_ contract deploys it, and the contract deploys only against payment, so a named listing (described below) can show its salt openly. A commit one block before the reveal handles the mempool. Bounties and sealed listings, on the other hand, keep the salt hidden until payment.
 
-That is also why this has to live on chain. Before paying, a buyer wants to know two things: Does the seller actually hold a salt for this address, and will the buyer be able to deploy there?
-An off-chain escrow could only promise both. The contract answers both itself, because it derives the address from the salt and deploys the buyer's code in the same transaction that pays the seller.
+That is also why this has to live on chain. Being on chain guarantees three things:
+1. The seller can't double sell (off-chain, they could sell the same salt to five buyers)
+2. The address can be owned by buyer. The salt only produces its address when deployed by Maras, and the address is then transferred to the buyer (so the seller can't deploy to an address they sell)
 
 ## The vertical
 
-A contract's address is a hash, so you cannot choose one — you can only try salts until one comes
-out the shape you want. Three groups pay for specific shapes:
+A contract's address is a hash, so you cannot choose one — you can only try salts until you get the shape you're looking for. Like slot machines. Three groups already pay for getting the right-shape address:
 
 - **Deployers who want leading zero bytes** already mine contracts with leading zero bytes (`0x000000…` costs less in calldata, which is a benefit they're willing to pay for).
 - **Uniswap V4 hook developers** need the low 14 bits of their hook's contract to describe a V4 permission set, so they _need_ to mine salts for a contract deployment.

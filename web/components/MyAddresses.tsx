@@ -13,10 +13,9 @@ import { Badge, Button, Card, Field, Hint, Input } from "@/components/ui";
 import { hookPermissions, leadingZeroBytes } from "@/lib/address";
 import { declaredWords, displayWord } from "@/lib/listing";
 import { ownedProxyAbi } from "@/lib/maras.generated";
-import { findOwnedAddresses, type AddressSource, type OwnedAddress } from "@/lib/owned";
+import { findOwnedAddresses, OWNED_KEY, type AddressSource, type OwnedAddress } from "@/lib/owned";
 import { transactionLabel, useTransaction } from "@/lib/useTransaction";
 
-export const OWNED_KEY = "owned-addresses";
 const EXPLORER = "https://sepolia.basescan.org/address/";
 
 const SOURCE_LABEL: Record<AddressSource, (id: bigint) => string> = {
@@ -125,7 +124,7 @@ function PointForm({ address, onDone }: { address: Address; onDone: () => void }
       <Button onClick={submit} disabled={!ready || busy}>
         {transactionLabel(state, "Point it here", "Pointing…")}
       </Button>
-      <Failure message={state.error} />
+      <Failure message={state.message} />
     </div>
   );
 }
@@ -177,7 +176,7 @@ function TransferForm({ address, onDone }: { address: Address; onDone: () => voi
           Back
         </Button>
       </div>
-      <Failure message={state.error} />
+      <Failure message={state.message} />
     </div>
   );
 }
