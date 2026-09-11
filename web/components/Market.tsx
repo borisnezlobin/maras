@@ -74,7 +74,7 @@ export function Market() {
 
   const market = MARAS_ADDRESS;
 
-  const { data: count } = useReadContract({
+  const { data: count, isPending } = useReadContract({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "namedListingCount",
@@ -102,7 +102,7 @@ export function Market() {
           />
         </Field>
         <span className="text-sm text-text-muted">
-          {ids.length === 0 ? "Nothing listed yet" : `${ids.length} listed`}
+          {isPending ? "Checking the chain…" : ids.length === 0 ? "Nothing listed yet" : `${ids.length} listed`}
         </span>
       </div>
 
@@ -135,12 +135,12 @@ export function Market() {
         ))}
       </div>
 
-      {ids.length === 0 && (
+      {!isPending && ids.length === 0 && (
         <Card className="flex items-center gap-3">
           <Hammer size={20} className="text-accent" />
           <p className="text-sm text-text-muted">
             Run the miner to put the first address up for sale:{" "}
-            <span className="hex">tsx miner/agent.ts list 2 0.001</span>
+            <span className="hex">npx hardhat run scripts/mine-and-list.ts --network baseSepolia</span>
           </p>
         </Card>
       )}
