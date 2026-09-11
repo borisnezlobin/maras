@@ -23,7 +23,11 @@ interface AddressTilesProps {
   scale?: number;
 }
 
-/** A match can start mid-byte, so every byte the run touches is lit. */
+/**
+ * A match can start mid-byte, so every byte the run touches is lit. With nothing searched for,
+ * common words are still highlighted: an address was usually mined for one, and a card that
+ * cannot show why it is worth buying is not selling anything.
+ */
 function byteKinds(address: string, patterns: string[]): TileKind[] {
   const zeros = leadingZeroBytes(address);
   const match = findNibbleRun(address, patterns);
@@ -37,8 +41,30 @@ function byteKinds(address: string, patterns: string[]): TileKind[] {
   });
 }
 
+/** Words worth pointing at when the viewer has not searched for anything specific. */
+const COMMON_WORDS = [
+  "deadbeef",
+  "deadbee",
+  "cafebabe",
+  "facade",
+  "beef",
+  "cafe",
+  "face",
+  "feed",
+  "babe",
+  "dead",
+  "b0b",
+];
+
+function highlightFor(address: string, patterns: string[]): string[] {
+  if (patterns.length > 0) return patterns;
+  const body = address.slice(2).toLowerCase();
+  const found = COMMON_WORDS.find((word) => body.includes(word));
+  return found === undefined ? [] : [found];
+}
+
 export function AddressTiles({ address, patterns = [], scale = 1 }: AddressTilesProps) {
-  const kinds = byteKinds(address, patterns);
+  const kinds = byteKinds(address, highlightFor(address, patterns));
 
   return (
     <svg
