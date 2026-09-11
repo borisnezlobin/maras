@@ -5,7 +5,6 @@ import { useState } from "react";
 
 import { HookPicker } from "@/components/HookPicker";
 import { Market, type SortKey } from "@/components/Market";
-import { SealedListings } from "@/components/SealedListings";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ZeroBytesSlider } from "@/components/ZeroBytesSlider";
 import { Input } from "@/components/ui";
@@ -104,7 +103,6 @@ export function MarketBrowser({
       <main className="flex flex-col gap-10 px-5 py-8 sm:px-8">
         <h1 className="sr-only">Contract addresses for sale</h1>
         <Market minZeroBytes={minZeroBytes} patterns={patterns} hookFlags={hookFlags} sort={sort} />
-        <SealedListings />
       </main>
     </>
   );

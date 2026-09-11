@@ -1,5 +1,6 @@
 import type { Address, Hex } from "viem";
 
+import { HOOK_FLAGS } from "@/lib/address";
 import { ENGLISH_FOR_HEX } from "@/lib/hex-words.generated";
 import { expandLoose, isPatternShape } from "@/lib/leet";
 
@@ -46,6 +47,12 @@ export function spellingsForSearch(query: string): string[] {
   if (isPatternShape(needle)) return expandLoose(needle, true);
   const spelling = HEX_FOR_ENGLISH[needle];
   return spelling === undefined ? [] : [spelling];
+}
+
+/** The V4 permissions a spec pins, or none when it leaves the hook bits free. */
+export function permissionNames(spec: OnChainSpec): string[] {
+  if (!spec.checkHookMask) return [];
+  return HOOK_FLAGS.filter(([bit]) => ((spec.hookMask >> bit) & 1) === 1).map(([, name]) => name);
 }
 
 export function declaredWords(spec: OnChainSpec | undefined): string[] {
