@@ -16,7 +16,7 @@ import {
   hookPermissions,
   leadingZeroBytes,
 } from "@/lib/address";
-import { declaredWords, type NamedListingRecord } from "@/lib/listing";
+import { declaredWords, displayWord, type NamedListingRecord } from "@/lib/listing";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { payloadInitCode } from "@/lib/payload";
 
@@ -64,7 +64,9 @@ function ListingCard({ listing, busy, onBuy }: { listing: Listing; busy: boolean
           {zeros > 0 && (
             <Badge tone="accent">{zeros === 1 ? "1 zero byte" : `${zeros} zero bytes`}</Badge>
           )}
-          {listing.words.length > 0 && <Badge tone="accent">{listing.words[0]}</Badge>}
+          {listing.words.length > 0 && (
+            <Badge tone="accent">{displayWord(listing.words[0])}</Badge>
+          )}
           <Badge>{permissions.length} V4</Badge>
           <Hint
             text={

@@ -45,7 +45,7 @@ const TOOLS = [
   },
   {
     name: "prepare_buy",
-    does: "Buys a listing and deploys a vault you own at that address.",
+    does: "Buys a listing and deploys a proxy you own there, which you can point at any contract.",
     args: "id, owner",
   },
   {
@@ -57,6 +57,21 @@ const TOOLS = [
     name: "prepare_timeout_sealed",
     does: "Takes back your payment and the seller's bond after they miss the window.",
     args: "id",
+  },
+  {
+    name: "my_addresses",
+    does: "The addresses a wallet owns, and what each one points at.",
+    args: "owner",
+  },
+  {
+    name: "prepare_point_address",
+    does: "Points an address you own at any contract, the way a domain points at a server.",
+    args: "address, implementation, setup",
+  },
+  {
+    name: "prepare_transfer_address",
+    does: "Hands an address you own to someone else. Cannot be undone.",
+    args: "address, newOwner",
   },
   {
     name: "prepare_request",

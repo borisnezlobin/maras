@@ -1,7 +1,9 @@
-import { formatEther, type Hex } from "viem";
+import { formatEther, type Address, type Hex } from "viem";
 
 import { hookPermissions, leadingZeroBytes } from "@/lib/address";
 import { expandLoose, padPatterns } from "@/lib/leet";
+import { displayWord } from "@/lib/listing";
+import type { OwnedAddress } from "@/lib/owned";
 import { market, type OnChainSpecRecord, type NamedListing, type RequestRecord, type SealedListing } from "@/lib/mcp/reads";
 
 export function text(body: string) {
@@ -12,11 +14,27 @@ export function text(body: string) {
  * Anything that costs money comes back as an unsigned transaction. This server holds no keys, so
  * the caller signs with a wallet it controls and nothing here can move its funds.
  */
-export function unsignedTransaction(data: Hex, value: bigint, note: string) {
+export function unsignedTransaction(data: Hex, value: bigint, note: string, to: Address = market) {
   return text(
     `${note}\n\nSend this transaction from your own wallet on Base Sepolia (chain 84532):\n\n` +
-      `  to     ${market}\n  value  ${value} wei (${formatEther(value)} ETH)\n  data   ${data}`,
+      `  to     ${to}\n  value  ${value} wei (${formatEther(value)} ETH)\n  data   ${data}`,
   );
+}
+
+/** `7ab1e7 ("tablet")` for a grinder find; a spelling that is already a word stands alone. */
+function namedWord(spelling: string): string {
+  const english = displayWord(spelling);
+  return english === spelling ? spelling : `${spelling} ("${english}")`;
+}
+
+export function describeOwned(owned: OwnedAddress): string {
+  const pointer =
+    owned.kind === "vault"
+      ? "a vault, which cannot be pointed"
+      : owned.implementation === null
+        ? "points nowhere yet"
+        : `points to ${owned.implementation}`;
+  return `${owned.address} · from ${owned.source} #${owned.id} · ${pointer}`;
 }
 
 /** The words the seller declared, which the contract verified before accepting the listing. */
@@ -58,7 +76,7 @@ export function buildSpec(input: SpecInput): BuiltSpec {
 export function describeSpec(spec: OnChainSpecRecord): string {
   const parts: string[] = [`${spec.minZeroBytes} zero bytes`];
   const words = declaredWords(spec);
-  if (words.length > 0) parts.push(`contains ${words[0]}`);
+  if (words.length > 0) parts.push(`contains ${namedWord(words[0])}`);
   if (spec.checkHookMask) parts.push(`hook bits 0x${spec.hookMask.toString(16).padStart(4, "0")}`);
   return parts.join(", ");
 }
@@ -67,7 +85,7 @@ export function describeNamed(id: bigint, listing: NamedListing): string {
   const zeros = leadingZeroBytes(listing.predicted);
   const permissions = hookPermissions(listing.predicted).length;
   const words = declaredWords(listing.spec);
-  const minedFor = words.length === 0 ? "" : ` · contains ${words[0]}`;
+  const minedFor = words.length === 0 ? "" : ` · contains ${namedWord(words[0])}`;
 
   return `#${id} ${listing.predicted} · ${zeros} zero bytes${minedFor} · ${permissions} V4 permissions · ${formatEther(listing.price)} ETH`;
 }
