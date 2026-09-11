@@ -14,14 +14,13 @@ contract MarasGettersTest is Test {
         vm.deal(address(this), 10 ether);
     }
 
-    function _spec() internal pure returns (Maras.Spec memory) {
-        return Maras.Spec({
-            minZeroBytes: 3,
-            hookMask: 0x2400,
-            checkHookMask: true,
-            pattern: bytes4(uint32(0xdeadbeef)),
-            checkPattern: true
-        });
+    function _spec() internal pure returns (Maras.Spec memory spec) {
+        spec.minZeroBytes = 3;
+        spec.hookMask = 0x2400;
+        spec.checkHookMask = true;
+        spec.patterns[0] = bytes4(uint32(0x0000cafe));
+        spec.patternCount = 1;
+        spec.patternNibbles = 4;
     }
 
     function test_SealedListingGetterKeepsNestedSpec() public {
@@ -32,8 +31,9 @@ contract MarasGettersTest is Test {
         assertEq(listing.spec.minZeroBytes, 3);
         assertEq(listing.spec.hookMask, 0x2400);
         assertTrue(listing.spec.checkHookMask);
-        assertEq(listing.spec.pattern, bytes4(uint32(0xdeadbeef)));
-        assertTrue(listing.spec.checkPattern);
+        assertEq(listing.spec.patterns[0], bytes4(uint32(0x0000cafe)));
+        assertEq(listing.spec.patternCount, 1);
+        assertEq(listing.spec.patternNibbles, 4);
         assertEq(listing.price, 0.05 ether);
         assertEq(listing.bond, 1 ether);
         assertEq(listing.seller, address(this));
@@ -48,6 +48,7 @@ contract MarasGettersTest is Test {
 
         assertEq(request.spec.minZeroBytes, 3);
         assertEq(request.spec.hookMask, 0x2400);
+        assertEq(request.spec.patternCount, 1);
         assertEq(request.initCodeHash, initCodeHash);
         assertEq(request.bounty, 0.2 ether);
         assertEq(request.buyer, address(this));

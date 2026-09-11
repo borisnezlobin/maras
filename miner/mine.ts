@@ -1,6 +1,6 @@
 import { bytesToHex, type Address, type Hex } from "viem";
 
-import { createDeriver, satisfiesSpec, type Spec } from "../shared/create3.js";
+import { compileSpec, createDeriver, type Spec } from "../shared/create3.js";
 
 const SALT_LENGTH = 32;
 const COUNTER_LENGTH = 8;
@@ -12,17 +12,6 @@ export interface MineResult {
   address: Address;
   attempts: number;
   seconds: number;
-}
-
-/**
- * Expected attempts for a spec, so callers can warn before starting a grind that
- * would take days. Each constrained bit doubles the work.
- */
-export function expectedAttempts(spec: Spec): number {
-  let bits = spec.minZeroBytes * 8;
-  if (spec.hookMask !== undefined) bits += 14;
-  if (spec.pattern !== undefined) bits += 32;
-  return 2 ** bits;
 }
 
 function randomSaltBuffer(): Uint8Array {
@@ -40,8 +29,8 @@ function writeCounter(salt: Uint8Array, counter: bigint): void {
 }
 
 /**
- * Grinds salts until one derives an address satisfying `spec`. Only the trailing counter
- * bytes are rewritten per attempt, so the hash inputs stay in a single preallocated buffer.
+ * Grinds salts until one derives an address satisfying `spec`. Only the trailing counter bytes
+ * are rewritten per attempt, and the spec is compiled once, so the loop allocates nothing.
  */
 export function mineSalt(
   deployer: Address,
@@ -49,6 +38,7 @@ export function mineSalt(
   onProgress?: (attempts: number) => void,
 ): MineResult {
   const derive = createDeriver(deployer);
+  const matches = compileSpec(spec);
   const salt = randomSaltBuffer();
   const startedAt = Date.now();
 
@@ -56,12 +46,11 @@ export function mineSalt(
     writeCounter(salt, counter);
     const address = derive(salt);
 
-    if (satisfiesSpec(address, spec)) {
-      const attempts = Number(counter) + 1;
+    if (matches(address)) {
       return {
         salt: bytesToHex(salt),
         address: bytesToHex(address) as Address,
-        attempts,
+        attempts: Number(counter) + 1,
         seconds: (Date.now() - startedAt) / 1000,
       };
     }

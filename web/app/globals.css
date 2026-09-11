@@ -1,53 +1,56 @@
 @import "tailwindcss";
 
 /*
- * Maras palette, taken from the salt terraces: crystal white pans, rosy salt, wet clay walls.
- * Every colour in the app resolves through one of these semantic tokens.
- * The design commits to a single light scheme on purpose, so there is no dark variant.
+ * A marketplace ground: cool light grey behind, white cards on top, one hot accent.
+ * Every colour in the app resolves through a semantic token defined here.
  */
 :root {
   color-scheme: light;
 
-  --pan-00: #fffdfb;
-  --pan-05: #fbf6f1;
-  --pan-10: #f4ece4;
-  --pan-20: #e8dbd0;
+  --grey-00: #ffffff;
+  --grey-05: #f4f5f7;
+  --grey-10: #e9ebef;
+  --grey-20: #dcdfe4;
+  --grey-40: #9aa1ad;
+  --grey-60: #5d6570;
+  --grey-80: #2f353d;
+  --grey-95: #14181d;
 
-  --clay-30: #cdb6a6;
-  --clay-50: #9a7c6a;
-  --clay-70: #5f4638;
-  --clay-90: #30221a;
+  --rose-10: #ffe9ee;
+  --rose-30: #ffc2d1;
+  --rose-50: #e6446f;
+  --rose-70: #b32a51;
 
-  --brine-10: #fbeaee;
-  --brine-30: #f0c3ce;
-  --brine-50: #c96b83;
-  --brine-70: #a24a61;
+  --surface: var(--grey-05);
+  --surface-raised: var(--grey-00);
+  --surface-sunken: var(--grey-10);
 
-  --surface: var(--pan-05);
-  --surface-raised: var(--pan-00);
-  --surface-sunken: var(--pan-10);
+  --text: var(--grey-95);
+  --text-muted: var(--grey-60);
+  --text-subtle: var(--grey-40);
+  --text-inverse: var(--grey-00);
 
-  --text: var(--clay-90);
-  --text-muted: var(--clay-70);
-  --text-subtle: var(--clay-50);
-  --text-inverse: var(--pan-00);
+  --edge: var(--grey-10);
+  --edge-strong: var(--grey-20);
 
-  --edge: var(--pan-20);
-  --edge-strong: var(--clay-30);
+  --accent: var(--rose-50);
+  --accent-strong: var(--rose-70);
+  --accent-soft: var(--rose-10);
+  --accent-edge: var(--rose-30);
 
-  --accent: var(--brine-50);
-  --accent-strong: var(--brine-70);
-  --accent-soft: var(--brine-10);
-  --accent-edge: var(--brine-30);
+  --control: var(--grey-95);
+  --control-hover: var(--grey-80);
 
-  --control: var(--clay-90);
-  --control-hover: var(--clay-70);
+  --tile-plain: var(--grey-20);
+  --tile-zero: var(--grey-05);
+  --tile-zero-edge: var(--grey-20);
+  --tile-pattern: var(--rose-50);
 
-  --radius-card: 0.75rem;
+  --radius-card: 0.875rem;
   --radius-control: 0.5rem;
 
-  --shadow-raised: 0 1px 2px rgb(48 34 26 / 0.06), 0 8px 24px -12px rgb(48 34 26 / 0.18);
-  --shadow-sunken: inset 0 1px 2px rgb(48 34 26 / 0.06);
+  --shadow-card: 0 1px 2px rgb(20 24 29 / 0.06), 0 1px 3px rgb(20 24 29 / 0.08);
+  --shadow-lift: 0 4px 12px rgb(20 24 29 / 0.1), 0 12px 28px -16px rgb(20 24 29 / 0.22);
 }
 
 @theme inline {
@@ -71,14 +74,14 @@
   --color-control: var(--control);
   --color-control-hover: var(--control-hover);
 
-  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
 
   --radius-card: var(--radius-card);
   --radius-control: var(--radius-control);
 
-  --shadow-raised: var(--shadow-raised);
-  --shadow-sunken: var(--shadow-sunken);
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
 }
 
 body {

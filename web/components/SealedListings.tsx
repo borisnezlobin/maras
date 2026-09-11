@@ -5,8 +5,9 @@ import { useMemo } from "react";
 import type { Address, Hex } from "viem";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 
-import { Badge, Button, Card, Stat } from "@/components/ui";
-import { describeEffort, expectedAttempts, formatEth } from "@/lib/address";
+import { ConnectGate } from "@/components/ConnectGate";
+import { Badge, Button, Card } from "@/components/ui";
+import { formatEth } from "@/lib/address";
 import { MARAS_ADDRESS, marasAbi } from "@/lib/maras.generated";
 import { vaultInitCodeHash } from "@/lib/payload";
 
@@ -16,8 +17,9 @@ interface Spec {
   minZeroBytes: number;
   hookMask: number;
   checkHookMask: boolean;
-  pattern: Hex;
-  checkPattern: boolean;
+  patterns: readonly Hex[];
+  patternCount: number;
+  patternNibbles: number;
 }
 
 interface SealedListing {
@@ -43,23 +45,14 @@ function statusOf(listing: SealedListing, account: Address | undefined): Status 
   return isBuyer ? "expiredForBuyer" : "expiredForOthers";
 }
 
-function SpecBadges({ spec }: { spec: Spec }) {
+function HiddenTiles() {
   return (
-    <div className="flex flex-wrap gap-2">
-      <Badge tone="accent">
-        {spec.minZeroBytes === 1 ? "1 leading zero byte" : `${spec.minZeroBytes} leading zero bytes`}
-      </Badge>
-      {spec.checkPattern && <Badge tone="accent">contains {spec.pattern.slice(2)}</Badge>}
-      {spec.checkHookMask && <Badge tone="accent">V4 hook bits 0x{spec.hookMask.toString(16)}</Badge>}
-    </div>
-  );
-}
-
-function SealedPlaceholder() {
-  return (
-    <div className="flex items-center gap-2.5 rounded-[var(--radius-control)] bg-surface-sunken px-3 py-2.5">
-      <Lock size={16} weight="fill" className="shrink-0 text-accent" />
-      <span className="hex text-sm text-text-subtle">{"●".repeat(40)}</span>
+    <div className="flex items-center justify-center bg-surface-sunken py-7">
+      <div className="grid grid-cols-5 gap-1">
+        {Array.from({ length: 20 }, (_, index) => (
+          <div key={index} className="size-[27px] rounded bg-edge-strong/60" />
+        ))}
+      </div>
     </div>
   );
 }
@@ -67,93 +60,46 @@ function SealedPlaceholder() {
 function SealedAction({
   status,
   listing,
-  canAct,
   busy,
   onBuy,
   onRefund,
 }: {
   status: Status;
   listing: SealedListing;
-  canAct: boolean;
   busy: boolean;
   onBuy: () => void;
   onRefund: () => void;
 }) {
   if (status === "available") {
     return (
-      <Button onClick={onBuy} disabled={busy || !canAct}>
-        {busy ? <CircleNotch size={16} className="animate-spin" /> : <Lock size={16} />}
-        Buy without seeing it
-      </Button>
+      <ConnectGate className="mt-2 w-full">
+        <Button className="mt-2 w-full" onClick={onBuy} disabled={busy}>
+          {busy ? <CircleNotch size={16} className="animate-spin" /> : <Lock size={16} />}
+          Buy unseen
+        </Button>
+      </ConnectGate>
     );
   }
 
   if (status === "awaiting") {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-text-muted">
-        <Timer size={16} className="text-accent" />
-        Seller has {minutesLeft(listing.deadline)} min to deliver
+      <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-text-muted">
+        <Timer size={15} className="text-accent" />
+        {minutesLeft(listing.deadline)} min left to deliver
       </span>
     );
   }
 
   if (status === "expiredForBuyer") {
     return (
-      <Button variant="secondary" onClick={onRefund} disabled={busy}>
+      <Button variant="secondary" className="mt-2 w-full" onClick={onRefund} disabled={busy}>
         <ArrowCounterClockwise size={16} />
-        Take refund and seller bond
+        Claim refund and bond
       </Button>
     );
   }
 
-  return <span className="text-sm text-text-subtle">Delivery window missed</span>;
-}
-
-function SealedCard({
-  listing,
-  account,
-  busy,
-  onBuy,
-  onRefund,
-}: {
-  listing: SealedListing;
-  account: Address | undefined;
-  busy: boolean;
-  onBuy: () => void;
-  onRefund: () => void;
-}) {
-  const effort = describeEffort(
-    expectedAttempts(
-      listing.spec.minZeroBytes,
-      listing.spec.checkHookMask,
-      listing.spec.checkPattern,
-    ),
-  );
-
-  return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <SealedPlaceholder />
-        <SpecBadges spec={listing.spec} />
-        <p className="text-xs text-text-subtle">Mining cost: {effort}</p>
-      </div>
-
-      <div className="flex flex-wrap items-end justify-between gap-4 border-t border-edge pt-4">
-        <div className="flex gap-6">
-          <Stat label="Price" value={formatEth(listing.price)} />
-          <Stat label="Seller bond at risk" value={formatEth(listing.bond)} />
-        </div>
-        <SealedAction
-          status={statusOf(listing, account)}
-          listing={listing}
-          canAct={account !== undefined}
-          busy={busy}
-          onBuy={onBuy}
-          onRefund={onRefund}
-        />
-      </div>
-    </Card>
-  );
+  return <span className="mt-2 text-sm text-text-subtle">Window missed</span>;
 }
 
 function SealedSlot({
@@ -180,28 +126,26 @@ function SealedSlot({
   });
 
   if (data === undefined) return null;
-
   const listing = data as unknown as SealedListing;
   if (listing.settled) return null;
 
   return (
-    <SealedCard
-      listing={listing}
-      account={account}
-      busy={busy}
-      onBuy={() => onBuy(id, listing.price)}
-      onRefund={() => onRefund(id)}
-    />
-  );
-}
-
-function EmptyState() {
-  return (
-    <Card>
-      <p className="text-sm text-text-muted">
-        Nothing sealed for sale yet. A seller lists one with <span className="hex">submit_salt</span>{" "}
-        over MCP, or by calling <span className="hex">listSealed</span>.
-      </p>
+    <Card className="flex flex-col overflow-hidden p-0">
+      <HiddenTiles />
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <span className="text-xl font-bold text-text">{formatEth(listing.price)}</span>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone="accent">{listing.spec.minZeroBytes}+ zero bytes promised</Badge>
+          <Badge>{formatEth(listing.bond)} bond</Badge>
+        </div>
+        <SealedAction
+          status={statusOf(listing, account)}
+          listing={listing}
+          busy={busy}
+          onBuy={() => onBuy(id, listing.price)}
+          onRefund={() => onRefund(id)}
+        />
+      </div>
     </Card>
   );
 }
@@ -211,7 +155,7 @@ export function SealedListings() {
   const { writeContract, isPending } = useWriteContract();
   const market = MARAS_ADDRESS;
 
-  const { data: count, isPending: isLoadingCount } = useReadContract({
+  const { data: count } = useReadContract({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "sealedListingCount",
@@ -223,7 +167,7 @@ export function SealedListings() {
     return Array.from({ length: total }, (_, index) => BigInt(index));
   }, [count]);
 
-  if (market === null) return null;
+  if (market === null || ids.length === 0) return null;
 
   function buy(id: bigint, price: bigint) {
     writeContract({
@@ -245,36 +189,24 @@ export function SealedListings() {
   }
 
   return (
-    <section className="flex flex-col gap-4 px-6 sm:px-10">
-      <h2 className="text-lg font-medium text-text">Sealed addresses</h2>
-      <p className="max-w-2xl text-sm text-text-muted">
-        The seller has committed to a salt but has not revealed it, so you are buying a guarantee
-        about the shape of the address rather than a specific one. That suits you if you want the gas
-        savings and do not care which address you get. Your payment is escrowed, and if the seller
-        misses the delivery window you take back your money along with their bond.
-      </p>
-
-      {isLoadingCount ? (
-        <Card>
-          <p className="text-sm text-text-muted">Checking the chain…</p>
-        </Card>
-      ) : ids.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {ids.map((id) => (
-            <SealedSlot
-              key={id.toString()}
-              id={id}
-              market={market}
-              account={account}
-              busy={isPending}
-              onBuy={buy}
-              onRefund={refund}
-            />
-          ))}
-        </div>
-      )}
+    <section className="flex flex-col gap-4">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-lg font-bold text-text">Sealed</h2>
+        <span className="text-sm text-text-muted">Pay first, see the address after</span>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {ids.map((id) => (
+          <SealedSlot
+            key={id.toString()}
+            id={id}
+            market={market}
+            account={account}
+            busy={isPending}
+            onBuy={buy}
+            onRefund={refund}
+          />
+        ))}
+      </div>
     </section>
   );
 }

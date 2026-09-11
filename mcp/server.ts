@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { formatEther, keccak256, parseEther, type Address, type Hex } from "viem";
 import { z } from "zod";
 
+import { describeEffort, expandLoose, expectedAttempts } from "../shared/leet.js";
 import {
   chainClients,
   commitHashFor,
@@ -11,47 +12,51 @@ import {
   marketAddress,
   onChainSpec,
   vaultInitCode,
-  type OnChainSpec,
 } from "../shared/market.js";
 
-type NamedListingTuple = [Address, bigint, Hex, Address, boolean];
+interface NamedListing {
+  seller: Address;
+  price: bigint;
+  salt: Hex;
+  predicted: Address;
+  sold: boolean;
+}
 
 const specShape = {
   minZeroBytes: z.number().int().min(0).max(20).default(0),
-  hookMask: z.number().int().min(0).max(0x3fff).optional(),
   pattern: z
     .string()
-    .regex(/^0x[0-9a-fA-F]{8}$/)
+    .regex(/^[0-9a-fA-F]{1,8}$/)
     .optional()
-    .describe("four bytes that must appear byte-aligned in the address, e.g. 0xdeadbeef"),
+    .describe("one to eight hex characters that must appear in the address, e.g. cafe"),
+  loose: z
+    .boolean()
+    .default(true)
+    .describe("also accept lookalikes, so cafe matches caf3, c4fe and c4f3"),
+  hookMask: z
+    .number()
+    .int()
+    .min(0)
+    .max(0x3fff)
+    .optional()
+    .describe("Uniswap V4 permission bits the address must carry in its low 14 bits"),
 };
 
 function text(body: string) {
   return { content: [{ type: "text" as const, text: body }] };
 }
 
-async function readNamedListings() {
-  const market = marketAddress();
-  const { publicClient } = chainClients();
-
-  const count = (await publicClient.readContract({
-    address: market,
-    abi: marasAbi,
-    functionName: "namedListingCount",
-  })) as bigint;
-
-  const listings = [];
-  for (let id = 0n; id < count; id++) {
-    const [seller, price, , predicted, sold] = (await publicClient.readContract({
-      address: market,
-      abi: marasAbi,
-      functionName: "namedListings",
-      args: [id],
-    })) as unknown as NamedListingTuple;
-
-    listings.push({ id, seller, price, predicted, sold });
-  }
-  return listings;
+function buildSpec(input: {
+  minZeroBytes: number;
+  pattern?: string;
+  loose: boolean;
+  hookMask?: number;
+}) {
+  const patterns = expandLoose(input.pattern ?? "", input.loose);
+  return {
+    spec: onChainSpec({ minZeroBytes: input.minZeroBytes, hookMask: input.hookMask, patterns }),
+    patterns,
+  };
 }
 
 function leadingZeroBytesOf(address: Address): number {
@@ -61,6 +66,16 @@ function leadingZeroBytesOf(address: Address): number {
   return count;
 }
 
+async function readListing(id: bigint): Promise<NamedListing> {
+  const { publicClient } = chainClients();
+  return (await publicClient.readContract({
+    address: marketAddress(),
+    abi: marasAbi,
+    functionName: "getNamedListing",
+    args: [id],
+  })) as unknown as NamedListing;
+}
+
 const server = new McpServer({ name: "maras", version: "1.0.0" });
 
 server.registerTool(
@@ -68,31 +83,39 @@ server.registerTool(
   {
     title: "Search mined addresses",
     description:
-      "Lists unsold mined contract addresses for sale, optionally filtered by leading zero bytes or maximum price.",
+      "Lists mined contract addresses for sale, filtered by leading zero bytes, a hex pattern, or price.",
     inputSchema: {
       minZeroBytes: z.number().int().min(0).max(20).default(0),
+      contains: z.string().regex(/^[0-9a-fA-F]{1,8}$/).optional(),
       maxPriceEth: z.string().optional(),
     },
   },
-  async ({ minZeroBytes, maxPriceEth }) => {
+  async ({ minZeroBytes, contains, maxPriceEth }) => {
+    const { publicClient } = chainClients();
+    const count = (await publicClient.readContract({
+      address: marketAddress(),
+      abi: marasAbi,
+      functionName: "namedListingCount",
+    })) as bigint;
+
     const ceiling = maxPriceEth === undefined ? undefined : parseEther(maxPriceEth);
-    const matches = (await readNamedListings()).filter(
-      (listing) =>
-        !listing.sold &&
-        leadingZeroBytesOf(listing.predicted) >= minZeroBytes &&
-        (ceiling === undefined || listing.price <= ceiling),
-    );
+    const needle = contains?.toLowerCase();
+    const rows: string[] = [];
 
-    if (matches.length === 0) return text("No listings match.");
+    for (let id = 0n; id < count; id++) {
+      const listing = await readListing(id);
+      if (listing.sold) continue;
 
-    return text(
-      matches
-        .map(
-          (listing) =>
-            `#${listing.id} ${listing.predicted} · ${leadingZeroBytesOf(listing.predicted)} zero bytes · ${formatEther(listing.price)} ETH`,
-        )
-        .join("\n"),
-    );
+      const zeros = leadingZeroBytesOf(listing.predicted);
+      const body = listing.predicted.slice(2).toLowerCase();
+      if (zeros < minZeroBytes) continue;
+      if (needle !== undefined && !body.includes(needle)) continue;
+      if (ceiling !== undefined && listing.price > ceiling) continue;
+
+      rows.push(`#${id} ${listing.predicted} · ${zeros} zero bytes · ${formatEther(listing.price)} ETH`);
+    }
+
+    return text(rows.length === 0 ? "No listings match." : rows.join("\n"));
   },
 );
 
@@ -101,36 +124,29 @@ server.registerTool(
   {
     title: "Buy a mined address",
     description:
-      "Buys a listed address and deploys an OwnedVault there, owned by `owner`. Payment and deployment happen in one transaction.",
+      "Buys a listed address and deploys an OwnedVault there owned by `owner`. Payment and deployment happen in one transaction, so a failed purchase costs only gas.",
     inputSchema: {
       id: z.number().int().min(0),
       owner: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
     },
   },
   async ({ id, owner }) => {
-    const market = marketAddress();
     const { publicClient, walletClient } = chainClients();
-
-    const [, price, , predicted, sold] = (await publicClient.readContract({
-      address: market,
-      abi: marasAbi,
-      functionName: "namedListings",
-      args: [BigInt(id)],
-    })) as unknown as NamedListingTuple;
-
-    if (sold) return text(`Listing #${id} is already sold.`);
+    const listing = await readListing(BigInt(id));
+    if (listing.sold) return text(`Listing #${id} is already sold.`);
 
     const hash = await walletClient.writeContract({
-      address: market,
+      address: marketAddress(),
       abi: marasAbi,
       functionName: "buyNamed",
       args: [BigInt(id), vaultInitCode(owner as Address)],
-      value: price,
+      value: listing.price,
     });
-    await publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") return text(`Purchase reverted in block ${receipt.blockNumber}.`);
 
     return text(
-      `Bought #${id} for ${formatEther(price)} ETH.\nDeployed at ${predicted}\n${explorerUrl(predicted)}`,
+      `Bought #${id} for ${formatEther(listing.price)} ETH.\n${listing.predicted}\n${explorerUrl(listing.predicted)}`,
     );
   },
 );
@@ -140,26 +156,27 @@ server.registerTool(
   {
     title: "Post a mining request",
     description:
-      "Escrows a bounty for an address nobody has mined yet. The buyer's payload is bound by hash, so a miner cannot substitute their own contract and collect the bounty.",
+      "Escrows a bounty for an address nobody has mined yet. The buyer's payload is bound by hash, so a miner cannot deploy their own contract at the qualifying address and collect the bounty.",
     inputSchema: {
       ...specShape,
       owner: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
       bountyEth: z.string(),
     },
   },
-  async ({ minZeroBytes, hookMask, pattern, owner, bountyEth }) => {
-    const market = marketAddress();
+  async ({ minZeroBytes, pattern, loose, hookMask, owner, bountyEth }) => {
     const { publicClient, walletClient } = chainClients();
-
+    const { spec, patterns } = buildSpec({ minZeroBytes, pattern, loose, hookMask });
     const initCode = vaultInitCode(owner as Address);
-    const spec: OnChainSpec = onChainSpec({
+
+    const attempts = expectedAttempts({
       minZeroBytes,
       hookMask,
-      pattern: pattern as Hex | undefined,
+      patternNibbles: patterns[0]?.length ? patterns[0].length - 2 : 0,
+      variantCount: patterns.length,
     });
 
     const hash = await walletClient.writeContract({
-      address: market,
+      address: marketAddress(),
       abi: marasAbi,
       functionName: "postRequest",
       args: [spec, keccak256(initCode)],
@@ -167,8 +184,9 @@ server.registerTool(
     });
     await publicClient.waitForTransactionReceipt({ hash });
 
+    const spellings = patterns.length > 1 ? ` Accepting ${patterns.length} spellings.` : "";
     return text(
-      `Request posted with a ${bountyEth} ETH bounty.\nBound payload hash ${keccak256(initCode)}`,
+      `Request posted with a ${bountyEth} ETH bounty. A miner should need ${describeEffort(attempts)} on one GPU.${spellings}\nBound payload hash ${keccak256(initCode)}`,
     );
   },
 );
@@ -178,19 +196,19 @@ server.registerTool(
   {
     title: "List a mined salt",
     description:
-      "Registers an already-mined salt for sale. Sends the seller-bound commitment first, waits one block, then reveals — without that gap the salt could be copied from the pending transaction.",
+      "Registers an already-mined salt for sale. Commits first and reveals a block later, because a salt broadcast in one transaction could otherwise be copied and registered by someone else.",
     inputSchema: {
       ...specShape,
       salt: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
       priceEth: z.string(),
     },
   },
-  async ({ salt, priceEth, minZeroBytes, hookMask, pattern }) => {
-    const market = marketAddress();
+  async ({ salt, priceEth, minZeroBytes, pattern, loose, hookMask }) => {
     const { account, publicClient, walletClient } = chainClients();
+    const { spec } = buildSpec({ minZeroBytes, pattern, loose, hookMask });
 
     const commitHash = await walletClient.writeContract({
-      address: market,
+      address: marketAddress(),
       abi: marasAbi,
       functionName: "commitSalt",
       args: [commitHashFor(salt as Hex, account.address)],
@@ -202,16 +220,15 @@ server.registerTool(
     }
 
     const listHash = await walletClient.writeContract({
-      address: market,
+      address: marketAddress(),
       abi: marasAbi,
       functionName: "listNamed",
-      args: [
-        salt as Hex,
-        parseEther(priceEth),
-        onChainSpec({ minZeroBytes, hookMask, pattern: pattern as Hex | undefined }),
-      ],
+      args: [salt as Hex, parseEther(priceEth), spec],
     });
-    await publicClient.waitForTransactionReceipt({ hash: listHash });
+    const listReceipt = await publicClient.waitForTransactionReceipt({ hash: listHash });
+    if (listReceipt.status !== "success") {
+      return text(`Listing reverted in block ${listReceipt.blockNumber}. The claim did not hold.`);
+    }
 
     return text(`Listed for ${priceEth} ETH.`);
   },

@@ -1,87 +1,132 @@
 "use client";
 
-import { CircleNotch, Cube, Hammer } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import { CircleNotch, Cube } from "@phosphor-icons/react";
+import { useMemo } from "react";
 import { encodeDeployData, type Address } from "viem";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 
-import { AddressHex } from "@/components/AddressHex";
-import { Badge, Button, Card, Field, Input, Stat } from "@/components/ui";
-import {
-  describeEffort,
-  expectedAttempts,
-  formatEth,
-  leadingZeroBytes,
-} from "@/lib/address";
-import {
-  MARAS_ADDRESS,
-  marasAbi,
-  ownedVaultAbi,
-  ownedVaultBytecode,
-} from "@/lib/maras.generated";
+import { AddressTiles } from "@/components/AddressTiles";
+import { ConnectGate } from "@/components/ConnectGate";
+import { Badge, Button, Card } from "@/components/ui";
+import { findNibbleRun, formatEth, hookMask, leadingZeroBytes, shortHex } from "@/lib/address";
+import { MARAS_ADDRESS, marasAbi, ownedVaultAbi, ownedVaultBytecode } from "@/lib/maras.generated";
 
 interface Listing {
   id: bigint;
-  seller: Address;
   price: bigint;
   predicted: Address;
-  sold: boolean;
 }
 
-function ListingRow({
+function ListingCard({
   listing,
-  onBuy,
+  patterns,
   busy,
-  connected,
+  onBuy,
 }: {
   listing: Listing;
-  onBuy: () => void;
+  patterns: string[];
   busy: boolean;
-  connected: boolean;
+  onBuy: () => void;
 }) {
   const zeros = leadingZeroBytes(listing.predicted);
-  const effort = describeEffort(expectedAttempts(zeros, false, false));
+  const hooks = hookMask(listing.predicted);
 
   return (
-    <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-2 min-w-0">
-        <AddressHex address={listing.predicted} size="lg" />
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={zeros > 0 ? "accent" : "neutral"}>
-            {zeros === 1 ? "1 leading zero byte" : `${zeros} leading zero bytes`}
-          </Badge>
-          <span className="text-xs text-text-subtle">Mining cost: {effort}</span>
-        </div>
+    <Card className="flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-[var(--shadow-lift)]">
+      <div className="flex items-center justify-center bg-surface-sunken py-7">
+        <AddressTiles address={listing.predicted} patterns={patterns} scale={1.5} />
       </div>
 
-      <div className="flex items-center gap-4 shrink-0">
-        <Stat label="Price" value={formatEth(listing.price)} />
-        <Button onClick={onBuy} disabled={busy || !connected}>
-          {busy ? <CircleNotch size={16} className="animate-spin" /> : <Cube size={16} />}
-          {connected ? "Buy and deploy here" : "Connect a wallet to buy"}
-        </Button>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <span className="text-xl font-bold text-text">{formatEth(listing.price)}</span>
+        <span className="hex text-xs text-text-muted">{shortHex(listing.predicted)}</span>
+        {(zeros > 0 || hooks !== 0) && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {zeros > 0 && (
+              <Badge tone="accent">{zeros === 1 ? "1 zero byte" : `${zeros} zero bytes`}</Badge>
+            )}
+            {hooks !== 0 && <Badge>V4 bits 0x{hooks.toString(16)}</Badge>}
+          </div>
+        )}
+        <ConnectGate className="mt-2 w-full">
+          <Button className="mt-2 w-full" onClick={onBuy} disabled={busy}>
+            {busy ? <CircleNotch size={16} className="animate-spin" /> : <Cube size={16} />}
+            Buy and deploy
+          </Button>
+        </ConnectGate>
       </div>
     </Card>
   );
 }
 
-function NotDeployed() {
+function ListingSlot({
+  id,
+  market,
+  minZeroBytes,
+  patterns,
+  hooksOnly,
+  busy,
+  onBuy,
+}: {
+  id: bigint;
+  market: Address;
+  minZeroBytes: number;
+  patterns: string[];
+  hooksOnly: boolean;
+  busy: boolean;
+  onBuy: (listing: Listing) => void;
+}) {
+  const { data } = useReadContract({
+    address: market,
+    abi: marasAbi,
+    functionName: "getNamedListing",
+    args: [id],
+    query: { refetchInterval: 5_000 },
+  });
+
+  if (data === undefined) return null;
+
+  const record = data as unknown as { price: bigint; predicted: Address; sold: boolean };
+  if (record.sold) return null;
+  if (leadingZeroBytes(record.predicted) < minZeroBytes) return null;
+  if (patterns.length > 0 && findNibbleRun(record.predicted, patterns) === null) return null;
+  if (hooksOnly && hookMask(record.predicted) === 0) return null;
+
+  const listing: Listing = { id, price: record.price, predicted: record.predicted };
+
   return (
-    <Card className="flex flex-col gap-2">
-      <h2 className="text-base font-medium text-text">The market contract is not deployed yet</h2>
-      <p className="text-sm text-text-muted">
-        Run <span className="hex">npx hardhat run scripts/deploy.ts --network baseSepolia</span>, then
-        regenerate the address with <span className="hex">npx tsx scripts/gen-web-abi.ts</span>.
-      </p>
+    <ListingCard
+      listing={listing}
+      patterns={patterns}
+      busy={busy}
+      onBuy={() => onBuy(listing)}
+    />
+  );
+}
+
+function Skeleton() {
+  return (
+    <Card className="flex flex-col overflow-hidden p-0">
+      <div className="h-[118px] animate-pulse bg-surface-sunken" />
+      <div className="flex flex-col gap-2 p-4">
+        <div className="h-6 w-20 animate-pulse rounded bg-surface-sunken" />
+        <div className="h-3 w-32 animate-pulse rounded bg-surface-sunken" />
+      </div>
     </Card>
   );
 }
 
-export function Market() {
+export function Market({
+  minZeroBytes,
+  patterns,
+  hooksOnly,
+}: {
+  minZeroBytes: number;
+  patterns: string[];
+  hooksOnly: boolean;
+}) {
   const { address: account } = useAccount();
-  const [minZeroBytes, setMinZeroBytes] = useState(0);
   const { writeContract, isPending } = useWriteContract();
-
   const market = MARAS_ADDRESS;
 
   const { data: count, isPending: isLoadingCount } = useReadContract({
@@ -92,119 +137,68 @@ export function Market() {
   });
 
   const ids = useMemo(() => {
-    const total = count === undefined ? BigInt(0) : count;
-    return Array.from({ length: Number(total) }, (_, index) => BigInt(index));
+    const total = count === undefined ? 0 : Number(count);
+    return Array.from({ length: total }, (_, index) => BigInt(index));
   }, [count]);
 
-  if (market === null) return <NotDeployed />;
+  if (market === null) {
+    return (
+      <Card>
+        <p className="text-sm text-text-muted">Contract not deployed yet.</p>
+      </Card>
+    );
+  }
+
+  if (isLoadingCount) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Skeleton />
+        <Skeleton />
+        <Skeleton />
+      </div>
+    );
+  }
+
+  if (ids.length === 0) {
+    return (
+      <Card className="flex flex-col gap-1 p-5">
+        <p className="text-sm text-text">Nothing listed yet.</p>
+        <p className="hex text-xs text-text-muted">
+          npx hardhat run scripts/mine-and-list.ts --network baseSepolia
+        </p>
+      </Card>
+    );
+  }
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <Field label="Fewest leading zero bytes" hint="Each extra zero byte costs 256x the compute to mine.">
-          <Input
-            type="number"
-            min={0}
-            max={20}
-            value={minZeroBytes}
-            onChange={(event) => setMinZeroBytes(Number(event.target.value))}
-            className="w-28"
-          />
-        </Field>
-        <span className="text-sm text-text-muted">
-          {isLoadingCount
-            ? "Checking the chain…"
-            : ids.length === 0
-              ? "Nothing listed yet"
-              : `${ids.length} listed`}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {ids.map((id) => (
-          <ListingSlot
-            key={id.toString()}
-            id={id}
-            market={market}
-            minZeroBytes={minZeroBytes}
-            account={account}
-            busy={isPending}
-            onBuy={(listing) =>
-              writeContract({
-                address: market,
-                abi: marasAbi,
-                functionName: "buyNamed",
-                args: [
-                  listing.id,
-                  encodeDeployData({
-                    abi: ownedVaultAbi,
-                    bytecode: ownedVaultBytecode,
-                    args: [account as Address],
-                  }),
-                ],
-                value: listing.price,
-              })
-            }
-          />
-        ))}
-      </div>
-
-      {!isLoadingCount && ids.length === 0 && (
-        <Card className="flex items-center gap-3">
-          <Hammer size={20} className="text-accent" />
-          <p className="text-sm text-text-muted">
-            Run the miner to put the first address up for sale:{" "}
-            <span className="hex">npx hardhat run scripts/mine-and-list.ts --network baseSepolia</span>
-          </p>
-        </Card>
-      )}
-    </section>
-  );
-}
-
-function ListingSlot({
-  id,
-  market,
-  minZeroBytes,
-  account,
-  busy,
-  onBuy,
-}: {
-  id: bigint;
-  market: Address;
-  minZeroBytes: number;
-  account: Address | undefined;
-  busy: boolean;
-  onBuy: (listing: Listing) => void;
-}) {
-  const { data } = useReadContract({
-    address: market,
-    abi: marasAbi,
-    functionName: "namedListings",
-    args: [id],
-  });
-
-  if (data === undefined) return null;
-
-  const [seller, price, , predicted, sold] = data as unknown as [
-    Address,
-    bigint,
-    string,
-    Address,
-    boolean,
-  ];
-
-  if (sold) return null;
-  if (leadingZeroBytes(predicted) < minZeroBytes) return null;
-
-  const listing: Listing = { id, seller, price, predicted, sold };
-
-  return (
-    <ListingRow
-      listing={listing}
-      busy={busy}
-      connected={account !== undefined}
-      onBuy={() => onBuy(listing)}
-    />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {ids.map((id) => (
+        <ListingSlot
+          key={id.toString()}
+          id={id}
+          market={market}
+          minZeroBytes={minZeroBytes}
+          patterns={patterns}
+          hooksOnly={hooksOnly}
+          busy={isPending}
+          onBuy={(listing) =>
+            writeContract({
+              address: market,
+              abi: marasAbi,
+              functionName: "buyNamed",
+              args: [
+                listing.id,
+                encodeDeployData({
+                  abi: ownedVaultAbi,
+                  bytecode: ownedVaultBytecode,
+                  args: [account as Address],
+                }),
+              ],
+              value: listing.price,
+            })
+          }
+        />
+      ))}
+    </div>
   );
 }

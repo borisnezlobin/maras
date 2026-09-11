@@ -21,11 +21,10 @@ export function Button({ variant = "primary", className = "", ...rest }: ButtonP
   return <button className={`${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${className}`} {...rest} />;
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+/** Padding lives at the call site so grid cards can run their artwork edge to edge. */
+export function Card({ children, className = "p-5" }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      className={`rounded-[var(--radius-card)] bg-surface-raised p-5 shadow-[var(--shadow-raised)] ${className}`}
-    >
+    <div className={`rounded-[var(--radius-card)] bg-surface-raised shadow-[var(--shadow-card)] ${className}`}>
       {children}
     </div>
   );

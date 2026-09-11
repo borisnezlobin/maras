@@ -7,12 +7,16 @@ import {CREATE3} from "solady/src/utils/CREATE3.sol";
 /// verifies every claimed address pattern itself and deploys atomically on payment.
 /// No private key ever exists and no salt is usable by anyone but this contract.
 contract Maras {
+    /// @dev `patterns` holds alternatives that all satisfy the buyer: asking for "cafe" loosely
+    /// also accepts "caf3", "c4fe" and "c4f3", which cuts the expected grind by that factor.
+    /// Fixed length so the struct copies cleanly into storage and the gas stays bounded.
     struct Spec {
         uint8 minZeroBytes;
         uint16 hookMask;
         bool checkHookMask;
-        bytes4 pattern;
-        bool checkPattern;
+        bytes4[16] patterns;
+        uint8 patternCount;
+        uint8 patternNibbles;
     }
 
     struct NamedListing {
@@ -44,6 +48,9 @@ contract Maras {
     }
 
     uint256 public constant DELIVERY_WINDOW = 10 minutes;
+    uint8 public constant MAX_PATTERNS = 16;
+    uint8 public constant MAX_PATTERN_NIBBLES = 8;
+    uint256 private constant ADDRESS_NIBBLES = 40;
     uint160 private constant HOOK_PERMISSION_MASK = 0x3fff;
 
     mapping(bytes32 => uint256) public commitBlock;
@@ -74,6 +81,7 @@ contract Maras {
     error WindowOpen();
     error WindowClosed();
     error PayoutFailed();
+    error TooManyPatterns();
 
     /// @dev Binds a salt to its seller before reveal so a mempool watcher cannot
     /// copy the salt out of a pending transaction and register it first.
@@ -274,10 +282,39 @@ contract Maras {
     }
 
     function _satisfiesSpec(address addr, Spec memory spec) private pure returns (bool) {
+        if (spec.patternCount > MAX_PATTERNS) revert TooManyPatterns();
         if (_leadingZeroBytes(addr) < spec.minZeroBytes) return false;
         if (spec.checkHookMask && !_matchesHookMask(addr, spec.hookMask)) return false;
-        if (spec.checkPattern && !_containsPattern(addr, spec.pattern)) return false;
+        if (spec.patternCount > 0 && !_containsAnyPattern(addr, spec)) return false;
         return true;
+    }
+
+    /// @dev Nibble-aligned rather than byte-aligned, so a pattern can be any length from one to
+    /// eight hex characters and can start at any position in the address.
+    function _containsAnyPattern(address addr, Spec memory spec) private pure returns (bool) {
+        uint256 nibbles = spec.patternNibbles;
+        if (nibbles == 0 || nibbles > MAX_PATTERN_NIBBLES) return false;
+
+        uint256 mask = (uint256(1) << (nibbles * 4)) - 1;
+        uint256 maxShift = (ADDRESS_NIBBLES - nibbles) * 4;
+        uint256 value = uint160(addr);
+
+        for (uint256 index = 0; index < spec.patternCount; index++) {
+            uint256 target = uint256(uint32(spec.patterns[index])) & mask;
+            if (_hasRunAt(value, target, mask, maxShift)) return true;
+        }
+        return false;
+    }
+
+    function _hasRunAt(uint256 value, uint256 target, uint256 mask, uint256 maxShift)
+        private
+        pure
+        returns (bool)
+    {
+        for (uint256 shift = 0; shift <= maxShift; shift += 4) {
+            if (((value >> shift) & mask) == target) return true;
+        }
+        return false;
     }
 
     function _leadingZeroBytes(address addr) private pure returns (uint8 count) {
@@ -295,13 +332,4 @@ contract Maras {
         return (uint160(addr) & HOOK_PERMISSION_MASK) == uint160(mask);
     }
 
-    /// @dev Byte-aligned contiguous match, mirrored exactly by the off-chain miner.
-    function _containsPattern(address addr, bytes4 pattern) private pure returns (bool) {
-        uint160 value = uint160(addr);
-        uint32 target = uint32(pattern);
-        for (uint256 shift = 0; shift <= 128; shift += 8) {
-            if (uint32(value >> shift) == target) return true;
-        }
-        return false;
-    }
 }
