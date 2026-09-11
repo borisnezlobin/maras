@@ -146,6 +146,24 @@ npx hardhat run scripts/fill-request.ts --network baseSepolia   # earn an open b
 npx tsx scripts/verify-parity.ts                                # miner agrees with the contract
 ```
 
+### Selling an address nobody can see
+
+The sealed flow takes two commands, because the seller has to be around to reveal. Listing mines a
+salt, publishes only a commitment to it, and posts a bond; the address itself never reaches the
+chain, so a buyer pays before seeing it.
+
+```bash
+SEALED_ZERO_BYTES=2 SEALED_PRICE_ETH=0.002 npx hardhat run scripts/list-sealed.ts --network baseSepolia
+SEALED_ID=0 npx hardhat run scripts/deliver-sealed.ts --network baseSepolia
+```
+
+The second command waits for a buyer, then reveals the salt and deploys their payload at the mined
+address. They bound that payload by hash when they paid, so it cannot be swapped for another. The
+delivery window is ten minutes: miss it and the buyer reclaims the price and the bond.
+
+The mined salt is written to `deployments/sealed.local.json`, which git ignores. Publishing it would
+let anyone derive the address without paying, which is the whole thing a sealed listing sells.
+
 ## Layout
 
 ```
