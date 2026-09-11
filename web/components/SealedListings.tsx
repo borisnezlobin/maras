@@ -211,7 +211,7 @@ export function SealedListings() {
   const { writeContract, isPending } = useWriteContract();
   const market = MARAS_ADDRESS;
 
-  const { data: count, isPending } = useReadContract({
+  const { data: count, isPending: isLoadingCount } = useReadContract({
     address: market ?? undefined,
     abi: marasAbi,
     functionName: "sealedListingCount",
@@ -254,7 +254,7 @@ export function SealedListings() {
         misses the delivery window you take back your money along with their bond.
       </p>
 
-      {isPending ? (
+      {isLoadingCount ? (
         <Card>
           <p className="text-sm text-text-muted">Checking the chain…</p>
         </Card>
