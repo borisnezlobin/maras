@@ -75,17 +75,19 @@ export function Marketplace() {
 
           {/* One group picks a minimum, the other is an independent switch, so they are
               separated rather than run together as one undifferentiated row. */}
-          <div className="flex items-center gap-1 rounded-full bg-surface-raised p-1">
-            {ZERO_CHOICES.map((value) => (
-              <FilterPill
-                key={value}
-                active={minZeroBytes === value}
-                onClick={() => setMinZeroBytes(value)}
-              >
-                {value === 0 ? "Any" : `${value}+`}
-              </FilterPill>
-            ))}
-            <span className="px-2 text-xs text-text-subtle">zero bytes</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-muted">Zero bytes</span>
+            <div className="flex items-center gap-1 rounded-full bg-surface-raised p-1">
+              {ZERO_CHOICES.map((value) => (
+                <FilterPill
+                  key={value}
+                  active={minZeroBytes === value}
+                  onClick={() => setMinZeroBytes(value)}
+                >
+                  {value === 0 ? "Any" : `${value}+`}
+                </FilterPill>
+              ))}
+            </div>
           </div>
 
           <FilterPill active={hooksOnly} onClick={() => setHooksOnly(!hooksOnly)}>
