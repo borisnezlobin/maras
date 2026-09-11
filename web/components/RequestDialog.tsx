@@ -54,17 +54,17 @@ function bountyIsValid(value: string): boolean {
 function Preview({ zeroBytes, spelling }: { zeroBytes: number; spelling: string }) {
   const zeros = "0".repeat(zeroBytes * 2);
   const fill = Math.max(0, ADDRESS_NIBBLES - zeros.length - spelling.length);
+  // With nothing typed the two runs would meet at an empty span and read as a gap, so the
+  // pattern only splits the fill once there is a pattern to show.
+  const lead = spelling === "" ? fill : Math.floor(fill / 2);
+  const trail = spelling === "" ? 0 : Math.ceil(fill / 2);
 
   return (
     <div className="hex flex w-full items-baseline overflow-hidden rounded-[var(--radius-control)] bg-surface-sunken px-3 py-2.5 text-sm whitespace-nowrap">
       <span className="shrink-0 text-text-subtle">0x{zeros}</span>
-      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
-        {"·".repeat(Math.floor(fill / 2))}
-      </span>
-      <span className="shrink-0 font-medium text-accent">{spelling}</span>
-      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">
-        {"·".repeat(Math.ceil(fill / 2))}
-      </span>
+      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">{"·".repeat(lead)}</span>
+      {spelling !== "" && <span className="shrink-0 font-medium text-accent">{spelling}</span>}
+      <span className="min-w-0 flex-1 overflow-hidden text-text-subtle">{"·".repeat(trail)}</span>
     </div>
   );
 }
@@ -110,6 +110,7 @@ function SpellingPills({
           <TogglePill
             key={spelling}
             active={!dropped.includes(spelling)}
+            label={`Accept the spelling ${spelling}`}
             onClick={() => onToggle(spelling)}
           >
             <span className="hex">{spelling}</span>
@@ -212,6 +213,12 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
             <span className="text-xs text-text-subtle">Mining time</span>
             <span className="text-sm font-semibold text-text">
               {effortFor(zeroBytes, hookBits, accepted)}
+              {allSpellings.length > 1 && (
+                <span className="font-normal text-text-muted">
+                  {" "}
+                  · {accepted.length} of {allSpellings.length} spellings
+                </span>
+              )}
             </span>
           </div>
           <ConnectGate>

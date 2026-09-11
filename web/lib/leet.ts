@@ -98,12 +98,20 @@ export function expectedAttempts(input: EffortInput): number {
   return probability === 0 ? Infinity : 1 / probability;
 }
 
+/**
+ * Rounded to one decimal place in each unit. Whole numbers hid the effect of toggling a single
+ * spelling, which made a control that does something look like a control that does nothing.
+ */
 export function describeEffort(attempts: number): string {
   const seconds = attempts / GPU_HASHES_PER_SECOND;
   if (seconds < 1) return "under a second";
-  if (seconds < 90) return `about ${Math.round(seconds)} seconds`;
-  if (seconds < 5_400) return `about ${Math.round(seconds / 60)} minutes`;
-  if (seconds < 172_800) return `about ${Math.round(seconds / 3_600)} hours`;
-  if (seconds < 31_536_000) return `about ${Math.round(seconds / 86_400)} days`;
+  if (seconds < 90) return `${trim(seconds)} seconds`;
+  if (seconds < 5_400) return `${trim(seconds / 60)} minutes`;
+  if (seconds < 172_800) return `${trim(seconds / 3_600)} hours`;
+  if (seconds < 31_536_000) return `${trim(seconds / 86_400)} days`;
   return "longer than a year";
+}
+
+function trim(value: number): string {
+  return value < 10 ? value.toFixed(1) : String(Math.round(value));
 }
