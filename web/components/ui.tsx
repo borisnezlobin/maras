@@ -82,10 +82,12 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 /** A pill the reader can switch off, used where each option changes what gets mined. */
 export function TogglePill({
   active,
+  label,
   onClick,
   children,
 }: {
   active: boolean;
+  label: string;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -93,6 +95,7 @@ export function TogglePill({
     <button
       onClick={onClick}
       aria-pressed={active}
+      aria-label={label}
       className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
         active
           ? "bg-accent text-text-inverse"
